@@ -1,239 +1,119 @@
-# Minisite
+# GitLook
 
-Lightweight self-hosted static site hosting with Git push deployment. Push HTML to a single endpoint, serve it at `http://host:port/repo-name/`.
+Lightweight self-hosted static site hosting with Git push deployment. Push HTML to a Git repository, and it automatically serves at `http://host:port/repo-name/`.
 
 ## Features
 
-- **Git push deployment** — `git push` triggers automatic deployment via post-receive hook
-- **Multi-repo under one domain** — each repo accessible at `/repo-name/`
-- **Auto directory indexing** with breadcrumb navigation
-- **Bare repo + worktree** architecture for clean deploys
-- **HTTP REST API** for managing repositories programmatically
-- **CLI** for repo management from terminal
-- **Pure Rust** implementation using axum
+- **Git push deployment** — push to deploy, no build step
+- **Single endpoint** — multiple sites under one domain, each at `/site-name/`
+- **Auto directory listing** with breadcrumbs
+- **Management API** with token authentication
+- **Pure Rust** using axum
 
 ## Quick Start
 
-### 1. Build
-
 ```bash
-cargo build --release
-```
+# Clone and enter the project
+git clone git@github.com:PandaJiuJiu/GitLook.git
+cd GitLook/contrib
 
-Binaries land in `target/release/`:
-- `Gitlook-server` — HTTP server
-- `Gitlook-cli` — management CLI
-
-### 2. Configure
-
-```bash
-./target/release/Gitlook-cli init --output config.toml
-# Edit config.toml
-```
-
-Key config values:
-
-```toml
-[server]
-host = "0.0.0.0"
-port = 9999
-
-[git]
-repos_dir = "/var/lib/Gitlook/repos"
-worktrees_dir = "/var/lib/Gitlook/worktrees"
-default_branch = "main"
-hook_template = "/etc/Gitlook/hooks/post-receive"
-```
-
-### 3. Start the server
-
-```bash
-./target/release/Gitlook-server --config config.toml
-```
-
-### 4. Create a repository
-
-```bash
-./target/release/Gitlook-cli create my-site
-```
-
-### 5. Push content
-
-```bash
-cd ~/my-site-content
-git init
-echo "<h1>Hello</h1>" > index.html
-git add . && git commit -m "Initial"
-git remote add Gitlook /var/lib/Gitlook/repos/my-site.git
-git push Gitlook main
-```
-
-The site is live at `http://localhost:9999/my-site/`.
-
-## Usage
-
-### CLI
-
-```bash
-Gitlook-cli list                # List all repos
-Gitlook-cli create <name>       # Create a repo
-Gitlook-cli delete <name>       # Delete a repo
-Gitlook-cli deploy <name>       # Force-deploy a repo
-Gitlook-cli info <name>         # Show repo details
-Gitlook-cli init                # Generate config.toml
-```
-
-### HTTP API
-
-```
-GET    /api/repos                 # List repos
-POST   /api/repos                 # Create repo {"name":"..."}
-DELETE /api/repos/:name           # Delete repo
-POST   /api/repos/:name/deploy    # Force deploy
-GET    /health                    # Health check
-```
-
-Example:
-
-```bash
-curl -X POST http://localhost:9999/api/repos \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-site"}'
-```
-
-### Static file serving
-
-```
-GET /repo-name/                   # Directory index
-GET /repo-name/path/to/file       # Static file
-GET /repo-name/path/to/index.html # Index file
-```
-
-Path traversal is prevented — requests cannot escape the repo's worktree directory.
-
-## Architecture
-
-```
-client push ──► bare repo (repos/) ──post-receive hook──► worktree (worktrees/)
-                                                              │
-                                                              ▼
-                                                     HTTP serve /repo-name/
-```
-
-- **Bare repo** (`repos/<name>.git`) — receives pushes, has post-receive hook installed
-- **Worktree** (`worktrees/<name>/`) — checked-out files served by HTTP
-- **post-receive hook** — runs `git checkout -f main` against the worktree on push
-
-## Deployment
-
-Docker is the deployment method. `docker-compose` handles building, running,
-and restart-on-boot:
-
-```bash
-cd contrib
-docker-compose up -d --build     # build and start
-docker-compose logs -f           # follow logs
-docker-compose restart           # restart (needed after editing config)
-docker-compose down              # stop
-```
-
-The service listens on port **9999** on all interfaces. Sites live in `~/Gitlook/`
-on the host, so the container can be deleted and rebuilt without losing
-anything.
-
-Set a token in `contrib/.env` before starting — compose refuses to start
-without one:
-
-```bash
-cd contrib
+# Generate a secure token (or use your own)
 echo "MINISITE_API_TOKEN=$(openssl rand -hex 32)" >> .env
+
+# Start the service
 docker-compose up -d --build
 ```
 
-From another machine on the LAN:
+The service runs on port **9999**. Sites are stored in `~/minisite/` on the host.
+
+## Usage
+
+### Deploy a site
 
 ```bash
-curl http://192.168.1.160:9999/            # service info
-curl http://192.168.1.160:9999/health      # -> ok
-curl http://192.168.1.160:9999/howto       # Markdown docs for AI agents
-open http://192.168.1.160:9999/my-site/    # a hosted site
-```
-
-Deploying a site (the API call needs the token; `git push` does not):
-
-```bash
-export MINISITE_API_TOKEN='...'            # from contrib/.env
-
-curl http://192.168.1.160:9999/api/repos -X POST \
+# 1. Create a repository via API (needs token)
+curl -X POST http://localhost:9999/api/repos \
      -H "Authorization: Bearer $MINISITE_API_TOKEN" \
      -d '{"name":"my-site"}'
 
-git remote add Gitlook ~/Gitlook/repos/my-site.git
-git push Gitlook main --force
+# 2. Push your content
+cd ~/my-site-content
+git init -b main
+echo "<h1>Hello</h1>" > index.html
+git add . && git commit -m "init"
+git remote add minisite ~/minisite/repos/my-site.git
+git push minisite main --force
+
+# 3. Visit the site
+curl http://localhost:9999/my-site/
 ```
 
-To listen on loopback only — this machine alone, nothing from the LAN —
-change the `ports:` line in `contrib/compose.yml` to `127.0.0.1:9999:9999`.
-
-### Authentication
-
-Hosted sites are public; the management API is not. `/api/*` requires
-`Authorization: Bearer <token>`, compared in constant time. `git push` is a
-separate path and needs no token.
-
-The token is read from `MINISITE_API_TOKEN` in the environment, falling back to
-`server.api_token` in `config.toml`. It goes in `contrib/.env` (gitignored)
-rather than in a config file, because config files get committed and baked into
-images. If neither is set the API is wide open and the server logs a warning at
-startup.
-
-### Exposing it to the network
-
-With a token set, publishing on the LAN is reasonable — the API that can delete
-your sites is locked. Two things to keep in mind: there is still **no TLS**, so
-the token crosses the network in plaintext and can be replayed by anyone who
-captures it. And the token is the only thing standing between a LAN guest and
-`DELETE /api/repos/{name}`. For anything beyond a trusted network, put TLS in
-front first.
-
-If `ufw` is active, open the port or nothing will reach it:
+### Management
 
 ```bash
+# List sites
+curl -H "Authorization: Bearer $MINISITE_API_TOKEN" \
+     http://localhost:9999/api/repos
+
+# Delete a site
+curl -X DELETE http://localhost:9999/api/repos/my-site \
+     -H "Authorization: Bearer $MINISITE_API_TOKEN"
+
+# Force redeploy
+curl -X POST http://localhost:9999/api/repos/my-site/deploy \
+     -H "Authorization: Bearer $MINISITE_API_TOKEN"
+```
+
+### Other endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Home page with site cards |
+| `GET /howto` | Markdown docs for AI agents |
+| `GET /health` | Health check |
+| `GET /site-name/` | Directory listing or index.html |
+| `GET /site-name/path/to/file` | Static file |
+
+## Configuration
+
+Edit `config.docker.toml`:
+
+- `server.host` / `server.port` — listen address
+- `server.github_url` — GitHub link in footer
+- `git.repos_dir` / `git.worktrees_dir` — where data lives
+- `static_files.auto_index` — enable directory listing
+- `static_files.index_template` — template for directory pages
+
+After editing, restart: `docker-compose restart`
+
+## Authentication
+
+The API (`/api/*`) requires a Bearer token. Sites themselves are public.
+
+- Token goes in `contrib/.env` as `MINISITE_API_TOKEN`
+- Or set `server.api_token` in config
+- Without a token, API is open — only suitable for localhost
+
+## Troubleshooting
+
+### Port already in use
+
+```bash
+# Rootless podman sometimes holds the port
+docker-compose up -d   # retry
+```
+
+### Can't connect from another machine
+
+```bash
+# Check firewall
 sudo ufw allow 9999/tcp
-sudo ufw status
 ```
 
-If it is already reachable and you still cannot connect, check whether the
-client is on the same subnet (`192.168.1.0/24`) — podman's port forwarder
-publishes on all interfaces, but a router set to client isolation will block
-same-LAN traffic.
-
-### Running under podman
-
-If `docker` is podman rather than Docker, two things need attention:
-
-- **Socket.** Point compose at the user socket:
-  `export DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock`
-- **Network.** `compose.yml` reuses podman's built-in `podman` network as an
-  external network, because compose-created networks get CNI configVersion
-  1.0.0 that podman's bundled plugins reject. On real Docker, delete that
-  `networks:` block.
-- **Restart can fail spuriously.** `docker-compose restart` sometimes reports
-  `bind: address already in use` — rootless podman's port forwarder takes a
-  moment to release the port. Wait a few seconds and run `docker-compose up -d`
-  again. Data is unaffected; nothing is lost when this happens.
-
-If Docker Hub is unreachable, put the registry prefix in `contrib/.env`:
-
-```
-MINISITE_REGISTRY=public.ecr.aws/docker/library
-```
-
-## Development
+### View logs
 
 ```bash
-cargo run --bin Gitlook-server -- --config config.toml
-cargo test
+docker-compose logs -f
 ```
 
 ## License

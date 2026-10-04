@@ -88,7 +88,8 @@ impl GitManager {
             .context("Failed to execute git symbolic-ref")?;
 
         let default_branch = if output.status.success() {
-            String::from_utf8_lossy(&output.stdout).trim().to_string()
+            let full = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            full.strip_prefix("refs/heads/").unwrap_or(&full).to_string()
         } else {
             self.default_branch.clone()
         };

@@ -1,6 +1,3 @@
-# Minisite Configuration
-# Generated at 2026-10-04 02:09:40 UTC
-
 [server]
 host = "0.0.0.0"
 port = 9999
@@ -9,14 +6,14 @@ max_body_size = 104857600
 request_timeout_secs = 300
 
 [git]
-repos_dir = "/home/zac/minisite/repos"
-worktrees_dir = "/home/zac/minisite/worktrees"
+repos_dir = "/home/zac/git/minisite/tmp/repos"
+worktrees_dir = "/home/zac/git/minisite/tmp/worktrees"
 default_branch = "main"
-hook_template = "hooks/post-receive"
+hook_template = "/home/zac/git/minisite/hooks/post-receive"
 
 [static_files]
 auto_index = true
-index_template = "templates/dir_index.html.tera"
+index_template = "/home/zac/git/minisite/templates/dir_index.html.tera"
 spa_fallback = false
 cache_max_age = 3600
 

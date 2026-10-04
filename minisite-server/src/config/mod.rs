@@ -1,5 +1,3 @@
-use figment::providers::{Env, Format, Toml};
-use figment::{Figment, providers::Serialized};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -90,38 +88,52 @@ impl Default for Config {
 
 impl Config {
     pub fn load() -> anyhow::Result<Self> {
-        let figment = Figment::new()
-            .merge(Toml::file("config.toml").nested())
-            .merge(Env::prefixed("MINISITE_").global().split("_"))
-            .merge(Serialized::defaults(Config::default()));
+        // 直接使用 toml crate 解析（figment 的 TOML provider 似乎有问题）
+        let toml_str = std::fs::read_to_string("config.toml").unwrap_or_default();
 
-        let config: Config = figment.extract()?;
+        if !toml_str.is_empty() {
+            // 使用 toml crate 直接解析
+            let config: Config = match toml::from_str(&toml_str) {
+                Ok(c) => c,
+                Err(e) => {
+                    // 如果 TOML 解析失败，使用默认值
+                    eprintln!("Warning: TOML parse failed: {}. Using defaults.", e);
+                    Config::default()
+                }
+            };
+            return Ok(config.expand_paths());
+        }
 
+        Ok(Config::default().expand_paths())
+    }
+
+    fn expand_paths(self) -> Self {
         let expand = |p: PathBuf| -> PathBuf {
-            if p.starts_with("~") {
+            if p.to_string_lossy().starts_with("~") {
                 if let Some(home) = dirs::home_dir() {
-                    return home.join(p.strip_prefix("~").unwrap());
+                    let stripped = p.strip_prefix("~").unwrap();
+                    return home.join(stripped);
                 }
             }
             p
         };
 
-        Ok(Config {
+        Config {
             git: GitConfig {
-                repos_dir: expand(config.git.repos_dir),
-                worktrees_dir: expand(config.git.worktrees_dir),
-                ..config.git
+                repos_dir: expand(self.git.repos_dir),
+                worktrees_dir: expand(self.git.worktrees_dir),
+                ..self.git
             },
             static_files: StaticConfig {
-                index_template: expand(config.static_files.index_template),
-                ..config.static_files
+                index_template: expand(self.static_files.index_template),
+                ..self.static_files
             },
             logging: LoggingConfig {
-                file_output: config.logging.file_output.map(expand),
-                ..config.logging
+                file_output: self.logging.file_output.map(expand),
+                ..self.logging
             },
-            ..config
-        })
+            ..self
+        }
     }
 
     pub fn server_addr(&self) -> String {

@@ -40,6 +40,8 @@ pub struct GitConfig {
 pub struct StaticConfig {
     pub auto_index: bool,
     pub index_template: PathBuf,
+    /// 首页（GET /）的模板，列出所有已托管的站点
+    pub home_template: PathBuf,
     pub spa_fallback: bool,
     pub cache_max_age: u64,
 }
@@ -93,6 +95,7 @@ impl Default for StaticConfig {
         Self {
             auto_index: true,
             index_template: PathBuf::from("templates/dir_index.html.tera"),
+            home_template: PathBuf::from("templates/home.html.tera"),
             spa_fallback: false,
             cache_max_age: 3600,
         }
@@ -200,6 +203,7 @@ impl Config {
             },
             static_files: StaticConfig {
                 index_template: expand(self.static_files.index_template),
+                home_template: expand(self.static_files.home_template),
                 ..self.static_files
             },
             logging: LoggingConfig {

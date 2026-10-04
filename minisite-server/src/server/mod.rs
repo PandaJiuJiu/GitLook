@@ -1,4 +1,5 @@
 mod api;
+mod home;
 mod howto;
 mod static_files;
 
@@ -91,6 +92,7 @@ pub async fn run(config: Config) -> Result<()> {
         config.base_path().to_string(),
         config.static_files.auto_index,
         config.static_files.index_template.clone(),
+        config.static_files.home_template.clone(),
         config.static_files.spa_fallback,
         config.static_files.cache_max_age,
     )?);
@@ -130,7 +132,7 @@ pub async fn run(config: Config) -> Result<()> {
     // 构建路由
     let app = Router::new()
         // 根入口
-        .route("/", get(root_info))
+        .route("/", get(home::home))
         // HowTo 端点（供 AI/脚本使用）
         .route("/howto", get(howto::howto))
         .merge(api)
@@ -158,23 +160,6 @@ pub async fn run(config: Config) -> Result<()> {
 
 async fn health_check() -> &'static str {
     "ok"
-}
-
-async fn root_info() -> axum::Json<serde_json::Value> {
-    axum::Json(serde_json::json!({
-        "service": "minisite",
-        "version": env!("CARGO_PKG_VERSION"),
-        "howto": "/howto",
-        "endpoints": {
-            "health": "/health",
-            "api": {
-                "list_repos": "GET /api/repos",
-                "create_repo": "POST /api/repos",
-                "delete_repo": "DELETE /api/repos/{name}",
-                "deploy_repo": "POST /api/repos/{name}/deploy"
-            }
-        }
-    }))
 }
 
 async fn shutdown_signal() {

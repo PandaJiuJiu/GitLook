@@ -33,6 +33,7 @@ impl StaticFileServer {
         base_path: String,
         auto_index: bool,
         index_template: PathBuf,
+        home_template: PathBuf,
         spa_fallback: bool,
         cache_max_age: u64,
     ) -> Result<Self> {
@@ -42,6 +43,11 @@ impl StaticFileServer {
         } else {
             // 内置模板
             tera.add_raw_template("dir_index", BUILTIN_INDEX_TEMPLATE)?;
+        }
+        if home_template.exists() {
+            tera.add_template_file(&home_template, Some("home"))?;
+        } else {
+            tera.add_raw_template("home", BUILTIN_HOME_TEMPLATE)?;
         }
         tera.autoescape_on(vec![]);
 
@@ -53,6 +59,11 @@ impl StaticFileServer {
             cache_max_age,
             tera: Arc::new(tera),
         })
+    }
+
+    /// 渲染首页（GET /）
+    pub fn render_home(&self, ctx: &TeraContext) -> Result<String> {
+        self.tera.render("home", ctx).map_err(Into::into)
     }
 
     /// 构建路由
@@ -418,3 +429,33 @@ const BUILTIN_INDEX_TEMPLATE: &str = r#"
 </body>
 </html>
 "#;
+/// templates/home.html.tera 不存在时的兜底模板（无样式精简版）。
+/// 与 BUILTIN_INDEX_TEMPLATE 同理：容器里若没挂载到 templates/，服务仍能起来。
+const BUILTIN_HOME_TEMPLATE: &str = r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>minisite</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:900px;margin:0 auto;padding:2rem;line-height:1.6;color:#333}
+a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}
+.card{border:1px solid #e5e7eb;border-radius:10px;padding:.9rem 1.1rem;margin-bottom:.6rem;display:block}
+.badge{background:#eff4ff;color:#2563eb;border-radius:999px;padding:.1rem .5rem;font-size:.75rem;font-family:monospace}
+.muted{color:#6b7280;font-size:.85rem}
+</style>
+</head>
+<body>
+<h1>minisite</h1>
+<p class="muted">{{ site_count }} site{% if site_count != 1 %}s{% endif %} hosted here.</p>
+{% if sites %}
+{% for site in sites %}
+<a class="card" href="{{ site.href }}"><strong>{{ site.name }}</strong><br>
+<span class="badge">{{ site.branch }}</span> <span class="muted">{{ site.updated_display }}</span></a>
+{% endfor %}
+{% else %}
+<p class="muted">No sites yet. Create one via <a href="{{ api_repos_url }}">API</a> (needs Bearer token), then push to it.</p>
+{% endif %}
+<p class="muted"><a href="{{ howto_url }}">HowTo</a></p>
+</body>
+</html>"#;

@@ -31,6 +31,7 @@ hook_template = "/etc/minisite/hooks/post-receive"
 [static_files]
 auto_index = true
 index_template = "/etc/minisite/templates/dir_index.html.tera"
+home_template = "/etc/minisite/templates/home.html.tera"
 spa_fallback = false
 cache_max_age = 3600
 

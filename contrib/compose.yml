@@ -30,11 +30,10 @@ services:
     restart: unless-stopped
 
     ports:
-      # 默认只发布到回环地址。minisite 目前完全没有鉴权：任何能连上这个端口
-      # 的人都可以 POST /api/repos 建仓库、DELETE /api/repos/{name} 删仓库。
-      # 改成 "9999:9999" 才会让局域网内所有设备都能访问——确认你能接受
-      # 别人删掉你的站点，再改这一行。
-      - "127.0.0.1:9999:9999"
+      # 监听所有网卡，局域网内可通过 http://192.168.1.160:9999 访问。
+      # /api/* 有 Bearer token 保护（见 README 的 Authentication 一节）。
+      # 想收回只允许本机访问，改回 "127.0.0.1:9999:9999" 即可。
+      - "9999:9999"
 
     # 保护 /api/* 的 Bearer token。真值放在同目录的 .env（已 gitignore），
     # 不写进本文件或 config.docker.toml——那两样都会进 git。

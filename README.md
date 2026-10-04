@@ -137,8 +137,9 @@ docker-compose restart           # restart (needed after editing config)
 docker-compose down              # stop
 ```
 
-The service listens on **127.0.0.1:9999 only**. Sites live in `~/minisite/` on
-the host, so the container can be deleted and rebuilt without losing anything.
+The service listens on port **9999** on all interfaces. Sites live in `~/minisite/`
+on the host, so the container can be deleted and rebuilt without losing
+anything.
 
 Set a token in `contrib/.env` before starting — compose refuses to start
 without one:
@@ -149,21 +150,30 @@ echo "MINISITE_API_TOKEN=$(openssl rand -hex 32)" >> .env
 docker-compose up -d --build
 ```
 
-```bash
-export MINISITE_API_TOKEN='...'          # from contrib/.env
+From another machine on the LAN:
 
-curl http://127.0.0.1:9999/api/repos -X POST \
+```bash
+curl http://192.168.1.160:9999/            # service info
+curl http://192.168.1.160:9999/health      # -> ok
+curl http://192.168.1.160:9999/howto       # Markdown docs for AI agents
+open http://192.168.1.160:9999/my-site/    # a hosted site
+```
+
+Deploying a site (the API call needs the token; `git push` does not):
+
+```bash
+export MINISITE_API_TOKEN='...'            # from contrib/.env
+
+curl http://192.168.1.160:9999/api/repos -X POST \
      -H "Authorization: Bearer $MINISITE_API_TOKEN" \
      -d '{"name":"my-site"}'
 
 git remote add minisite ~/minisite/repos/my-site.git
 git push minisite main --force
-
-curl http://127.0.0.1:9999/my-site/
 ```
 
-`curl http://127.0.0.1:9999/howto` returns a Markdown document describing the
-whole workflow — useful for handing to an AI agent.
+To listen on loopback only — this machine alone, nothing from the LAN —
+change the `ports:` line in `contrib/compose.yml` to `127.0.0.1:9999:9999`.
 
 ### Authentication
 
@@ -180,13 +190,23 @@ startup.
 ### Exposing it to the network
 
 With a token set, publishing on the LAN is reasonable — the API that can delete
-your sites is locked. Change the `ports:` line in `contrib/compose.yml` from
-`127.0.0.1:9999:9999` to `9999:9999`.
+your sites is locked. Two things to keep in mind: there is still **no TLS**, so
+the token crosses the network in plaintext and can be replayed by anyone who
+captures it. And the token is the only thing standing between a LAN guest and
+`DELETE /api/repos/{name}`. For anything beyond a trusted network, put TLS in
+front first.
 
-Two things to keep in mind: there is still **no TLS**, so the token crosses the
-network in plaintext and can be replayed by anyone who captures it. And the token
-is the only thing standing between a LAN guest and `DELETE /api/repos/{name}`.
-For anything beyond a trusted network, put TLS in front first.
+If `ufw` is active, open the port or nothing will reach it:
+
+```bash
+sudo ufw allow 9999/tcp
+sudo ufw status
+```
+
+If it is already reachable and you still cannot connect, check whether the
+client is on the same subnet (`192.168.1.0/24`) — podman's port forwarder
+publishes on all interfaces, but a router set to client isolation will block
+same-LAN traffic.
 
 ### Running under podman
 

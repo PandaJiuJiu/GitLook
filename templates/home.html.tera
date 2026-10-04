@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>minisite</title>
+    <style>
+        :root {
+            --bg: #f7f8fa;
+            --card: #ffffff;
+            --text: #1a1d21;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --accent: #2563eb;
+            --accent-soft: #eff4ff;
+            --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0e1116;
+                --card: #171a21;
+                --text: #e6e8ec;
+                --muted: #9aa3b2;
+                --border: #262b34;
+                --accent: #6ea8fe;
+                --accent-soft: #16233b;
+                --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+            }
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 3rem 1.5rem 4rem;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wrap { max-width: 1000px; margin: 0 auto; }
+
+        header { margin-bottom: 2.5rem; }
+        .logo {
+            display: inline-flex; align-items: center; gap: .55rem;
+            font-size: 1.5rem; font-weight: 650; letter-spacing: -.02em;
+        }
+        .logo .dot {
+            width: .6rem; height: .6rem; border-radius: 50%;
+            background: var(--accent);
+        }
+        .tagline { color: var(--muted); margin: .5rem 0 0; font-size: .95rem; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            display: block;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.15rem 1.25rem;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: var(--shadow);
+            transition: transform .12s ease, border-color .12s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+        .card:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .card-name {
+            font-weight: 600;
+            font-size: 1.05rem;
+            word-break: break-word;
+            margin-bottom: .5rem;
+        }
+        .card-meta {
+            display: flex; align-items: center; gap: .5rem;
+            color: var(--muted); font-size: .82rem;
+        }
+        .badge {
+            display: inline-block;
+            background: var(--accent-soft);
+            color: var(--accent);
+            border-radius: 999px;
+            padding: .1rem .55rem;
+            font-size: .75rem;
+            font-weight: 600;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        .dot-sep { opacity: .45; }
+
+        .empty {
+            background: var(--card);
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+        }
+        .empty h2 { margin: 0 0 .4rem; font-size: 1.05rem; font-weight: 600; }
+        .empty p { margin: 0; color: var(--muted); font-size: .9rem; }
+        .empty code {
+            background: var(--accent-soft); color: var(--accent);
+            padding: .1rem .4rem; border-radius: 5px;
+            font-size: .85em;
+            display: inline-block; margin-top: .3rem;
+        }
+
+        footer { margin-top: 2.5rem; color: var(--muted); font-size: .85rem; }
+        footer a { color: var(--muted); }
+        .count { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <div class="logo"><span class="dot"></span> minisite</div>
+            <p class="tagline">
+                <span class="count">{{ site_count }}</span>
+                {% if site_count == 1 %}site{% else %}sites{% endif %}
+                hosted here — push to deploy.
+            </p>
+        </header>
+
+        {% if sites %}
+        <div class="grid">
+            {% for site in sites %}
+            <a class="card" href="{{ site.href }}">
+                <div class="card-name">{{ site.name }}</div>
+                <div class="card-meta">
+                    <span class="badge">{{ site.branch }}</span>
+                    <span class="dot-sep">&middot;</span>
+                    <span>{{ site.updated_display }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">
+            <h2>No sites yet</h2>
+            <p>Create one, then push to it:</p>
+            <p><code>curl -X POST {{ api_repos_url }} -H "Authorization: Bearer $TOKEN" -d '{"name":"my-site"}'</code></p>
+            <p><code>git push minisite main --force</code></p>
+            <p><a href="{{ howto_url }}">Read the HowTo</a></p>
+        </div>
+        {% endif %}
+
+        <footer>
+            <a href="{{ howto_url }}">HowTo</a> &middot; this page is machine-readable at
+            <code>{{ base_url }}/</code> with <code>Accept: application/json</code>
+        </footer>
+    </div>
+</body>
+</html>

@@ -48,7 +48,13 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let config = Config::load()?;
+
+    // init 只写文件，不需要读配置——放在前面才能在配置损坏时也能用来修复
+    if let Commands::Init { output } = &cli.command {
+        return init_config(output).await;
+    }
+
+    let config = Config::load(&cli.config)?;
 
     let git = GitManager::new(
         config.git.repos_dir,
@@ -63,7 +69,7 @@ async fn main() -> Result<()> {
         Commands::Delete { name } => delete_repo(&git, &name).await,
         Commands::Deploy { name } => deploy_repo(&git, &name).await,
         Commands::Info { name } => info_repo(&git, &name).await,
-        Commands::Init { output } => init_config(&output).await,
+        Commands::Init { .. } => unreachable!("handled above"),
     }
 }
 

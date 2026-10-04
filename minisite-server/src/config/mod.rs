@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Config {
     pub server: ServerConfig,
     pub git: GitConfig,
@@ -11,6 +12,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
@@ -22,6 +24,7 @@ pub struct ServerConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GitConfig {
     pub repos_dir: PathBuf,
     pub worktrees_dir: PathBuf,
@@ -30,6 +33,7 @@ pub struct GitConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct StaticConfig {
     pub auto_index: bool,
     pub index_template: PathBuf,
@@ -38,6 +42,7 @@ pub struct StaticConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct WebhookConfig {
     pub enabled: bool,
     pub secret: String,
@@ -45,69 +50,111 @@ pub struct WebhookConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct LoggingConfig {
     pub level: String,
     pub json_format: bool,
     pub file_output: Option<PathBuf>,
 }
 
-impl Default for Config {
+// 默认值集中在这里；Config::default() 只是把各段拼起来，
+// 避免同一份默认值在两处各写一遍而走偏。
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            host: "0.0.0.0".into(),
+            port: 9999,
+            base_path: "".into(),
+            max_body_size: 100 * 1024 * 1024, // 100MB
+            request_timeout_secs: 300,
+            howto_file: PathBuf::from("docs/HOWTO.md"),
+        }
+    }
+}
+
+impl Default for GitConfig {
     fn default() -> Self {
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         Self {
-            server: ServerConfig {
-                host: "0.0.0.0".into(),
-                port: 9999,
-                base_path: "".into(),
-                max_body_size: 100 * 1024 * 1024, // 100MB
-                request_timeout_secs: 300,
-                howto_file: PathBuf::from("docs/HOWTO.md"),
-            },
-            git: GitConfig {
-                repos_dir: home.join("minisite/repos"),
-                worktrees_dir: home.join("minisite/worktrees"),
-                default_branch: "main".into(),
-                hook_template: PathBuf::from("hooks/post-receive"),
-            },
-            static_files: StaticConfig {
-                auto_index: true,
-                index_template: PathBuf::from("templates/dir_index.html.tera"),
-                spa_fallback: false,
-                cache_max_age: 3600,
-            },
-            webhook: WebhookConfig {
-                enabled: false,
-                secret: "".into(),
-                allowed_events: vec!["push".into()],
-            },
-            logging: LoggingConfig {
-                level: "info".into(),
-                json_format: false,
-                file_output: None,
-            },
+            repos_dir: home.join("minisite/repos"),
+            worktrees_dir: home.join("minisite/worktrees"),
+            default_branch: "main".into(),
+            hook_template: PathBuf::from("hooks/post-receive"),
+        }
+    }
+}
+
+impl Default for StaticConfig {
+    fn default() -> Self {
+        Self {
+            auto_index: true,
+            index_template: PathBuf::from("templates/dir_index.html.tera"),
+            spa_fallback: false,
+            cache_max_age: 3600,
+        }
+    }
+}
+
+impl Default for WebhookConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            secret: "".into(),
+            allowed_events: vec!["push".into()],
+        }
+    }
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: "info".into(),
+            json_format: false,
+            file_output: None,
+        }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            server: ServerConfig::default(),
+            git: GitConfig::default(),
+            static_files: StaticConfig::default(),
+            webhook: WebhookConfig::default(),
+            logging: LoggingConfig::default(),
         }
     }
 }
 
 impl Config {
-    pub fn load() -> anyhow::Result<Self> {
-        // 直接使用 toml crate 解析（figment 的 TOML provider 似乎有问题）
-        let toml_str = std::fs::read_to_string("config.toml").unwrap_or_default();
+    /// 从指定路径加载配置
+    pub fn load(path: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let path = path.as_ref();
 
-        if !toml_str.is_empty() {
-            // 使用 toml crate 直接解析
-            let config: Config = match toml::from_str(&toml_str) {
-                Ok(c) => c,
-                Err(e) => {
-                    // 如果 TOML 解析失败，使用默认值
-                    eprintln!("Warning: TOML parse failed: {}. Using defaults.", e);
-                    Config::default()
-                }
-            };
-            return Ok(config.expand_paths());
-        }
+        // 文件不存在：视为首次运行，使用默认配置
+        let toml_str = match std::fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                tracing::warn!(
+                    "Config file {} not found, using defaults. \
+                     Run with --init-config to generate one.",
+                    path.display()
+                );
+                return Ok(Config::default().expand_paths());
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("Cannot read {}: {}", path.display(), e));
+            }
+        };
 
-        Ok(Config::default().expand_paths())
+        // 文件存在但解析失败：直接报错。
+        // 静默回退到默认配置会让服务用错误的目录启动，比启动失败更难排查。
+        let config: Config = toml::from_str(&toml_str).map_err(|e| {
+            anyhow::anyhow!("Failed to parse {}: {}", path.display(), e)
+        })?;
+
+        Ok(config.expand_paths())
     }
 
     fn expand_paths(self) -> Self {

@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
     }
 
     // 加载配置
-    let mut config = Config::load()?;
+    let mut config = Config::load(&args.config)?;
 
     // 命令行参数覆盖
     if let Some(host) = args.host {
@@ -77,6 +77,7 @@ async fn main() -> Result<()> {
     }
 
     info!("Minisite starting...");
+    info!("Config file: {}", args.config);
     info!("Config: {:?}", config);
 
     // 运行服务器

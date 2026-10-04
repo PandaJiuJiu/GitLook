@@ -63,7 +63,7 @@ impl HowTo {
                     e
                 );
                 format!(
-                    "# minisite — HowTo unavailable\n\n\
+                    "# gitlook — HowTo unavailable\n\n\
                      Could not read the HowTo document at `{}`.\n\n\
                      Reason: {}\n\n\
                      Set `server.howto_file` in config.toml to a readable Markdown file.\n",

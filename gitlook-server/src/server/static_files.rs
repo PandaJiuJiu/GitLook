@@ -436,7 +436,7 @@ const BUILTIN_HOME_TEMPLATE: &str = r#"<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>minisite</title>
+<title>gitlook</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:900px;margin:0 auto;padding:2rem;line-height:1.6;color:#333}
 a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}
@@ -446,7 +446,7 @@ a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
-<h1>minisite</h1>
+<h1>gitlook</h1>
 <p class="muted">{{ site_count }} site{% if site_count != 1 %}s{% endif %} hosted here.</p>
 {% if sites %}
 {% for site in sites %}

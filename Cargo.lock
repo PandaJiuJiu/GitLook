@@ -763,6 +763,55 @@ dependencies = [
 ]
 
 [[package]]
+name = "gitlook-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "console",
+ "gitlook-server",
+ "indicatif",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "gitlook-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "chrono",
+ "clap",
+ "dirs",
+ "flate2",
+ "futures",
+ "http",
+ "hyper",
+ "kstring",
+ "mime_guess",
+ "percent-encoding",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tera",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tower-http",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "uuid",
+ "zstd",
+]
+
+[[package]]
 name = "globset"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1260,55 +1309,6 @@ checksum = "f7c44f8e672c00fe5308fa235f821cb4198414e1c77935c1ab6948d3fd78550e"
 dependencies = [
  "mime",
  "unicase",
-]
-
-[[package]]
-name = "minisite-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "console",
- "indicatif",
- "minisite-server",
- "serde",
- "serde_json",
- "tokio",
- "toml",
-]
-
-[[package]]
-name = "minisite-server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "chrono",
- "clap",
- "dirs",
- "flate2",
- "futures",
- "http",
- "hyper",
- "kstring",
- "mime_guess",
- "percent-encoding",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "tera",
- "thiserror 1.0.69",
- "tokio",
- "tokio-util",
- "toml",
- "tower-http",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "uuid",
- "zstd",
 ]
 
 [[package]]

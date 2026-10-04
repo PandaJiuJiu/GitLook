@@ -106,7 +106,7 @@ pub async fn run(config: Config) -> Result<()> {
 
     if state.api_token.is_none() {
         tracing::warn!(
-            "No API token configured (server.api_token or MINISITE_API_TOKEN). \
+            "No API token configured (server.api_token or gitlook_API_TOKEN). \
              /api/* is open to anyone who can reach this port — anyone can create \
              or delete repositories. Set a token before exposing it beyond loopback."
         );

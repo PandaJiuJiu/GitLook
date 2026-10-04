@@ -1,4 +1,4 @@
-# minisite — HowTo
+# Gitlook — HowTo
 
 > One-page reference for AI agents and scripts. Fetch it with `curl http://HOST:PORT/howto`.
 
@@ -40,7 +40,7 @@ separate path from the HTTP API:
 
 ```bash
 # git push needs no token — it authenticates by filesystem/SSH access
-git push minisite main
+git push Gitlook main
 ```
 
 If the server was started with no token at all, `/api/*` is open to anyone who
@@ -58,19 +58,19 @@ curl -X POST http://HOST:PORT/api/repos \
 
 # 2. Locally, prepare your site content
 mkdir ~/my-site && cd ~/my-site
-echo '<h1>Hello from minisite</h1>' > index.html
+echo '<h1>Hello from Gitlook</h1>' > index.html
 git init -b main
 git add . && git commit -m 'init'
 
-# 3. Add minisite as a git remote
-#    路径要用宿主机上的那个，不是容器里的 /var/lib/minisite。
-#    仓库目录由宿主机 ~/minisite/repos 挂进容器，所以直接写宿主机路径：
-#      ~/minisite/repos/my-site.git
-git remote add minisite ~/minisite/repos/my-site.git
+# 3. Add Gitlook as a git remote
+#    路径要用宿主机上的那个，不是容器里的 /var/lib/Gitlook。
+#    仓库目录由宿主机 ~/Gitlook/repos 挂进容器，所以直接写宿主机路径：
+#      ~/Gitlook/repos/my-site.git
+git remote add Gitlook ~/Gitlook/repos/my-site.git
 
 # 4. Push (--force is often needed the first time, because the server
 #    creates an initial empty commit when the repo is registered)
-git push minisite main --force
+git push Gitlook main --force
 
 # 5. Verify
 curl http://HOST:PORT/my-site/
@@ -83,7 +83,7 @@ open http://HOST:PORT/my-site/    # in a browser
 cd ~/my-site
 # edit index.html ...
 git add . && git commit -m 'tweak'
-git push minisite main            # no --force needed after the first push
+git push Gitlook main            # no --force needed after the first push
 ```
 
 The post-receive hook (auto-installed at repo creation) runs `git checkout -f main` against the worktree on every push, so updates appear immediately.
@@ -91,12 +91,12 @@ The post-receive hook (auto-installed at repo creation) runs `git checkout -f ma
 ## Manage from the CLI (server-side)
 
 ```bash
-minisite-cli list                  # list all repos
-minisite-cli create my-site        # create
-minisite-cli info my-site          # show paths, branch, timestamps
-minisite-cli deploy my-site        # force re-checkout (e.g., after fixing permissions)
-minisite-cli delete my-site        # remove bare repo + worktree
-minisite-cli init --output config.toml   # generate starter config
+Gitlook-cli list                  # list all repos
+Gitlook-cli create my-site        # create
+Gitlook-cli info my-site          # show paths, branch, timestamps
+Gitlook-cli deploy my-site        # force re-checkout (e.g., after fixing permissions)
+Gitlook-cli delete my-site        # remove bare repo + worktree
+Gitlook-cli init --output config.toml   # generate starter config
 ```
 
 ## Repository name rules
@@ -193,7 +193,7 @@ place; changes are picked up on the next request with no restart or rebuild.
 
 ```toml
 [server]
-howto_file = "/etc/minisite/HOWTO.md"
+howto_file = "/etc/Gitlook/HOWTO.md"
 ```
 
 If the file is missing or unreadable, `/howto` still returns `200` with a short

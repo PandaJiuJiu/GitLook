@@ -4,12 +4,12 @@ mod server;
 
 use anyhow::Result;
 use clap::Parser;
-use minisite_server::config::Config;
+use gitlook_server::config::Config;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
-#[command(name = "minisite", version, about = "Lightweight self-hosted static site hosting with Git push deployment")]
+#[command(name = "gitlook", version, about = "Lightweight self-hosted static site hosting with Git push deployment")]
 struct Args {
     /// Configuration file path
     #[arg(short, long, default_value = "config.toml")]
@@ -76,12 +76,12 @@ async fn main() -> Result<()> {
         config.git.worktrees_dir = worktrees_dir.into();
     }
 
-    info!("Minisite starting...");
+    info!("gitlook starting...");
     info!("Config file: {}", args.config);
     info!("Config: {:?}", config);
 
     // 运行服务器
-    minisite_server::server::run(config).await?;
+    gitlook_server::server::run(config).await?;
 
     Ok(())
 }
@@ -92,7 +92,7 @@ async fn init_config_file(path: &str) -> Result<()> {
     let config = Config::default();
     let toml = toml::to_string_pretty(&config)?;
     let commented = format!(
-        "# Minisite Configuration\n# Generated at {}\n\n{}",
+        "# gitlook Configuration\n# Generated at {}\n\n{}",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
         toml
     );

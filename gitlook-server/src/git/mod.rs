@@ -190,7 +190,7 @@ impl GitManager {
             })?;
 
         let output = Command::new("git")
-            .args(["--git-dir", bare_path.to_str().unwrap(), "config", "minisite.worktree-relpath"])
+            .args(["--git-dir", bare_path.to_str().unwrap(), "config", "gitlook.worktree-relpath"])
             .arg(&relpath)
             .output()
             .context("Failed to execute git config")?;
@@ -213,7 +213,7 @@ impl GitManager {
 
         // 创建初始 README.md 并提交
         let readme_path = worktree_path.join("README.md");
-        tokio_fs::write(&readme_path, format!("# {}\n\nWelcome to your minisite repository!\n", name)).await?;
+        tokio_fs::write(&readme_path, format!("# {}\n\nWelcome to your gitlook repository!\n", name)).await?;
 
         let output = Command::new("git")
             .args(["--git-dir", bare_path.to_str().unwrap(), "--work-tree", worktree_path.to_str().unwrap()])
@@ -373,7 +373,7 @@ pub struct DeployResult {
 }
 
 const DEFAULT_HOOK_TEMPLATE: &str = r#"#!/bin/bash
-# minisite post-receive hook
+# gitlook post-receive hook
 # Auto-generated - do not edit directly
 
 REPO_NAME="{{REPO_NAME}}"
@@ -385,18 +385,18 @@ GIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # worktree 路径存成"相对于裸仓库所在目录"的相对路径，在创建仓库时写入。
 # 钩子执行时才知道自己被挂载到了哪里，因此不能把绝对路径写死——
-# 宿主机上是 ~/minisite/worktrees，容器里是 /var/lib/minisite/worktrees，
+# 宿主机上是 ~/gitlook/worktrees，容器里是 /var/lib/gitlook/worktrees，
 # 写死哪个都会在另一边失效。相对路径两边都成立。
-REL="$(git --git-dir="$GIT_DIR" config --get minisite.worktree-relpath)"
+REL="$(git --git-dir="$GIT_DIR" config --get gitlook.worktree-relpath)"
 if [ -z "$REL" ]; then
-    echo "minisite: 仓库 $REPO_NAME 缺少 minisite.worktree-relpath 配置，无法部署" >&2
+    echo "gitlook: 仓库 $REPO_NAME 缺少 gitlook.worktree-relpath 配置，无法部署" >&2
     exit 1
 fi
 WORKTREE="$(cd "$GIT_DIR/.." && cd "$REL" && pwd)"
 
 if [ ! -d "$WORKTREE" ]; then
     mkdir -p "$WORKTREE" || {
-        echo "minisite: 无法创建 worktree $WORKTREE" >&2
+        echo "gitlook: 无法创建 worktree $WORKTREE" >&2
         exit 1
     }
 fi
@@ -409,7 +409,7 @@ while read oldrev newrev refname; do
         if git --git-dir="$GIT_DIR" --work-tree="$WORKTREE" checkout -f "$BRANCH"; then
             echo "Deployment complete for $REPO_NAME"
         else
-            echo "minisite: 部署 $REPO_NAME 失败" >&2
+            echo "gitlook: 部署 $REPO_NAME 失败" >&2
             exit 1
         fi
     fi
@@ -424,8 +424,8 @@ mod tests {
         // 这是容器部署的实际布局：repos 与 worktrees 是同级目录
         assert_eq!(
             relative_path(
-                std::path::Path::new("/var/lib/minisite/repos"),
-                std::path::Path::new("/var/lib/minisite/worktrees/demo"),
+                std::path::Path::new("/var/lib/gitlook/repos"),
+                std::path::Path::new("/var/lib/gitlook/worktrees/demo"),
             ),
             Some("../worktrees/demo".into())
         );
@@ -436,8 +436,8 @@ mod tests {
         // 同一个相对路径在宿主机上也成立，这就是不用绝对路径的原因
         assert_eq!(
             relative_path(
-                std::path::Path::new("/home/zac/minisite/repos"),
-                std::path::Path::new("/home/zac/minisite/worktrees/demo"),
+                std::path::Path::new("/home/zac/gitlook/repos"),
+                std::path::Path::new("/home/zac/gitlook/worktrees/demo"),
             ),
             Some("../worktrees/demo".into())
         );
@@ -458,7 +458,7 @@ mod tests {
     fn mixed_absolute_and_relative_is_rejected() {
         assert_eq!(
             relative_path(
-                std::path::Path::new("/var/lib/minisite/repos"),
+                std::path::Path::new("/var/lib/gitlook/repos"),
                 std::path::Path::new("worktrees/demo"),
             ),
             None
@@ -471,7 +471,7 @@ mod tests {
         assert_eq!(
             relative_path(
                 std::path::Path::new(deep),
-                std::path::Path::new("/var/lib/minisite/worktrees/demo"),
+                std::path::Path::new("/var/lib/gitlook/worktrees/demo"),
             ),
             None
         );

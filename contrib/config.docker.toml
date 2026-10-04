@@ -1,4 +1,4 @@
-# minisite 容器内配置。
+# Gitlook 容器内配置。
 #
 # 与仓库根目录的 config.toml 分开：那份是本机开发用的，指向 tmp/ 下的目录；
 # 这份是容器部署用的，指向挂载进来的数据卷。
@@ -19,19 +19,19 @@ base_path = ""
 max_body_size = 104857600
 request_timeout_secs = 300
 # 挂载进来的，所以改完立刻生效，不需要重启容器（服务按 mtime 判断是否重读）
-howto_file = "/etc/minisite/docs/HOWTO.md"
+howto_file = "/etc/Gitlook/docs/HOWTO.md"
 
 [git]
-repos_dir = "/var/lib/minisite/repos"
-worktrees_dir = "/var/lib/minisite/worktrees"
+repos_dir = "/var/lib/Gitlook/repos"
+worktrees_dir = "/var/lib/Gitlook/worktrees"
 default_branch = "main"
 # 创建仓库时把这个脚本拷进 <repo>.git/hooks/post-receive
-hook_template = "/etc/minisite/hooks/post-receive"
+hook_template = "/etc/Gitlook/hooks/post-receive"
 
 [static_files]
 auto_index = true
-index_template = "/etc/minisite/templates/dir_index.html.tera"
-home_template = "/etc/minisite/templates/home.html.tera"
+index_template = "/etc/Gitlook/templates/dir_index.html.tera"
+home_template = "/etc/Gitlook/templates/home.html.tera"
 spa_fallback = false
 cache_max_age = 3600
 

@@ -1,9 +1,9 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use minisite_server::{config::Config, git::GitManager};
+use gitlook_server::{config::Config, git::GitManager};
 
 #[derive(Parser, Debug)]
-#[command(name = "minisite-cli", version, about = "CLI for managing minisite repositories")]
+#[command(name = "gitlook-cli", version, about = "CLI for managing gitlook repositories")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -98,8 +98,8 @@ async fn create_repo(git: &GitManager, name: &str) -> Result<()> {
     println!("   Worktree: {}", repo.worktree_path.display());
     println!("   Default branch: {}", repo.default_branch);
     println!("\nAdd remote and push:");
-    println!("   git remote add minisite ssh://user@host/{}.git", name);
-    println!("   git push minisite main");
+    println!("   git remote add gitlook ssh://user@host/{}.git", name);
+    println!("   git push gitlook main");
     Ok(())
 }
 
@@ -142,7 +142,7 @@ async fn init_config(output: &str) -> Result<()> {
     let config = Config::default();
     let toml = toml::to_string_pretty(&config)?;
     let commented = format!(
-        "# Minisite Configuration\n# Generated at {}\n\n{}",
+        "# gitlook Configuration\n# Generated at {}\n\n{}",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
         toml
     );

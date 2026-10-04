@@ -21,13 +21,13 @@ cargo build --release
 ```
 
 Binaries land in `target/release/`:
-- `minisite-server` — HTTP server
-- `minisite-cli` — management CLI
+- `Gitlook-server` — HTTP server
+- `Gitlook-cli` — management CLI
 
 ### 2. Configure
 
 ```bash
-./target/release/minisite-cli init --output config.toml
+./target/release/Gitlook-cli init --output config.toml
 # Edit config.toml
 ```
 
@@ -39,22 +39,22 @@ host = "0.0.0.0"
 port = 9999
 
 [git]
-repos_dir = "/var/lib/minisite/repos"
-worktrees_dir = "/var/lib/minisite/worktrees"
+repos_dir = "/var/lib/Gitlook/repos"
+worktrees_dir = "/var/lib/Gitlook/worktrees"
 default_branch = "main"
-hook_template = "/etc/minisite/hooks/post-receive"
+hook_template = "/etc/Gitlook/hooks/post-receive"
 ```
 
 ### 3. Start the server
 
 ```bash
-./target/release/minisite-server --config config.toml
+./target/release/Gitlook-server --config config.toml
 ```
 
 ### 4. Create a repository
 
 ```bash
-./target/release/minisite-cli create my-site
+./target/release/Gitlook-cli create my-site
 ```
 
 ### 5. Push content
@@ -64,8 +64,8 @@ cd ~/my-site-content
 git init
 echo "<h1>Hello</h1>" > index.html
 git add . && git commit -m "Initial"
-git remote add minisite /var/lib/minisite/repos/my-site.git
-git push minisite main
+git remote add Gitlook /var/lib/Gitlook/repos/my-site.git
+git push Gitlook main
 ```
 
 The site is live at `http://localhost:9999/my-site/`.
@@ -75,12 +75,12 @@ The site is live at `http://localhost:9999/my-site/`.
 ### CLI
 
 ```bash
-minisite-cli list                # List all repos
-minisite-cli create <name>       # Create a repo
-minisite-cli delete <name>       # Delete a repo
-minisite-cli deploy <name>       # Force-deploy a repo
-minisite-cli info <name>         # Show repo details
-minisite-cli init                # Generate config.toml
+Gitlook-cli list                # List all repos
+Gitlook-cli create <name>       # Create a repo
+Gitlook-cli delete <name>       # Delete a repo
+Gitlook-cli deploy <name>       # Force-deploy a repo
+Gitlook-cli info <name>         # Show repo details
+Gitlook-cli init                # Generate config.toml
 ```
 
 ### HTTP API
@@ -137,7 +137,7 @@ docker-compose restart           # restart (needed after editing config)
 docker-compose down              # stop
 ```
 
-The service listens on port **9999** on all interfaces. Sites live in `~/minisite/`
+The service listens on port **9999** on all interfaces. Sites live in `~/Gitlook/`
 on the host, so the container can be deleted and rebuilt without losing
 anything.
 
@@ -168,8 +168,8 @@ curl http://192.168.1.160:9999/api/repos -X POST \
      -H "Authorization: Bearer $MINISITE_API_TOKEN" \
      -d '{"name":"my-site"}'
 
-git remote add minisite ~/minisite/repos/my-site.git
-git push minisite main --force
+git remote add Gitlook ~/Gitlook/repos/my-site.git
+git push Gitlook main --force
 ```
 
 To listen on loopback only — this machine alone, nothing from the LAN —
@@ -232,7 +232,7 @@ MINISITE_REGISTRY=public.ecr.aws/docker/library
 ## Development
 
 ```bash
-cargo run --bin minisite-server -- --config config.toml
+cargo run --bin Gitlook-server -- --config config.toml
 cargo test
 ```
 

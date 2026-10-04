@@ -1,8 +1,8 @@
 [package]
-name = "minisite-server"
+name = "gitlook-server"
 version = "0.1.0"
 edition = "2021"
-description = "Minisite HTTP server with Git push deployment"
+description = "Gitlook HTTP server with Git push deployment"
 
 [dependencies]
 # HTTP Server

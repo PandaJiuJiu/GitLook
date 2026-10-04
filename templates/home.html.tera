@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>minisite</title>
+    <title>Gitlook</title>
     <style>
         :root {
             --bg: #f7f8fa;
@@ -123,7 +123,7 @@
 <body>
     <div class="wrap">
         <header>
-            <div class="logo"><span class="dot"></span> minisite</div>
+            <div class="logo"><span class="dot"></span> Gitlook</div>
             <p class="tagline">
                 <span class="count">{{ site_count }}</span>
                 {% if site_count == 1 %}site{% else %}sites{% endif %}
@@ -149,7 +149,7 @@
             <h2>No sites yet</h2>
             <p>Create one, then push to it:</p>
             <p><code>curl -X POST {{ api_repos_url }} -H "Authorization: Bearer $TOKEN" -d '{"name":"my-site"}'</code></p>
-            <p><code>git push minisite main --force</code></p>
+            <p><code>git push Gitlook main --force</code></p>
             <p><a href="{{ howto_url }}">Read the HowTo</a></p>
         </div>
         {% endif %}

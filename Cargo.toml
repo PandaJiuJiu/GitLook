@@ -1,5 +1,5 @@
 [workspace]
-members = ["minisite-server", "minisite-cli"]
+members = ["gitlook-server", "gitlook-cli"]
 resolver = "2"
 
 [profile.release]

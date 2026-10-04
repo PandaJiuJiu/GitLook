@@ -77,7 +77,7 @@ pub async fn home(State(state): State<AppState>, headers: HeaderMap) -> Response
 
     if wants_json(&headers) {
         return Json(ServiceInfo {
-            service: "minisite",
+            service: "gitlook",
             version: env!("CARGO_PKG_VERSION"),
             howto: "/howto",
             sites: sites.clone(),

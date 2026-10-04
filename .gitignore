@@ -23,7 +23,10 @@ worktrees/
 data/
 logs/
 
-# Minisite specific
+# Gitlook specific
+gitlook-repos/
+gitlook-worktrees/
+# Legacy (renamed from minisite-*)
 minisite-repos/
 minisite-worktrees/
 

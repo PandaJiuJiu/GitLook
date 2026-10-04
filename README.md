@@ -167,6 +167,10 @@ If `docker` is podman rather than Docker, two things need attention:
   external network, because compose-created networks get CNI configVersion
   1.0.0 that podman's bundled plugins reject. On real Docker, delete that
   `networks:` block.
+- **Restart can fail spuriously.** `docker-compose restart` sometimes reports
+  `bind: address already in use` — rootless podman's port forwarder takes a
+  moment to release the port. Wait a few seconds and run `docker-compose up -d`
+  again. Data is unaffected; nothing is lost when this happens.
 
 If Docker Hub is unreachable, put the registry prefix in `contrib/.env`:
 

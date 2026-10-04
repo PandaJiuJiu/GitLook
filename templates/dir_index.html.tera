@@ -31,15 +31,10 @@
     <div class="repo-header">
         <div class="repo-name">{{ repo }}</div>
         <div class="breadcrumb">
-            {% if path %}
-                <a href="/{{ repo }}/">/</a>
-                {% set parts = path.split("/") %}
-                {% for part in parts if part %}
-                    / <a href="/{{ repo }}/{{ path | truncate(path.len() - part.len() - 1, true, "") }}/">{{ part }}</a>
-                {% endfor %}
-            {% else %}
-                /
-            {% endif %}
+            {% for crumb in breadcrumbs %}
+                {% if loop.first %}{% else %} / {% endif %}<a href="{{ crumb.href }}">{{ crumb.name }}</a>
+            {% endfor %}
+            {% if path == "" %}/{% endif %}
         </div>
     </div>
 
@@ -56,7 +51,10 @@
             </thead>
             <tbody>
                 {% for entry in entries %}
-                <tr class="{{ 'dir' if entry.is_dir else 'file' }}{{ ' parent' if entry.name == '..' else '' }}">
+                {% set row_class = "file" %}
+                {% if entry.is_dir %}{% set row_class = "dir" %}{% endif %}
+                {% if entry.name == ".." %}{% set row_class = "parent" %}{% endif %}
+                <tr class="{{ row_class }}">
                     <td><a href="{{ entry.href }}">{{ entry.name }}</a></td>
                     <td class="size">{{ entry.size | filesizeformat }}</td>
                     <td class="modified">{{ entry.modified | date(format="%Y-%m-%d %H:%M") }}</td>

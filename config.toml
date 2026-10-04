@@ -1,5 +1,5 @@
 # Minisite Configuration
-# Generated at 2026-10-04 09:30:00 UTC
+# Generated at 2026-10-04 02:09:40 UTC
 
 [server]
 host = "0.0.0.0"
@@ -9,8 +9,8 @@ max_body_size = 104857600
 request_timeout_secs = 300
 
 [git]
-repos_dir = "~/minisite/repos"
-worktrees_dir = "~/minisite/worktrees"
+repos_dir = "/home/zac/minisite/repos"
+worktrees_dir = "/home/zac/minisite/worktrees"
 default_branch = "main"
 hook_template = "hooks/post-receive"
 
@@ -28,4 +28,3 @@ allowed_events = ["push"]
 [logging]
 level = "info"
 json_format = false
-file_output = null

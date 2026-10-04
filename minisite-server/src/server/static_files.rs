@@ -59,23 +59,30 @@ impl StaticFileServer {
     pub fn router() -> Router<AppState> {
         Router::new()
             .route("/{repo}/", get(serve_repo_root))
-            .route("/{repo}/*path", get(serve_repo_file))
+            .route("/{repo}/{*path}", get(serve_repo_file_handler))
     }
 }
 
 async fn serve_repo_root(
     State(state): State<AppState>,
     AxumPath(repo): AxumPath<String>,
-) -> impl IntoResponse {
-    serve_repo_file(State(state), AxumPath((repo, "".to_string()))).await
+) -> Response {
+    serve_repo_file_inner(&state.static_files, &repo, "").await
 }
 
-async fn serve_repo_file(
+async fn serve_repo_file_handler(
     State(state): State<AppState>,
     AxumPath((repo, path)): AxumPath<(String, String)>,
 ) -> Response {
-    let server = &state.static_files;
-    let repo_path = server.worktrees_dir.join(&repo);
+    serve_repo_file_inner(&state.static_files, &repo, &path).await
+}
+
+async fn serve_repo_file_inner(
+    server: &StaticFileServer,
+    repo: &str,
+    path: &str,
+) -> Response {
+    let repo_path = server.worktrees_dir.join(repo);
 
     // 检查仓库是否存在
     if !repo_path.exists() || !repo_path.is_dir() {
@@ -86,7 +93,7 @@ async fn serve_repo_file(
     let requested_path = if path.is_empty() {
         repo_path.clone()
     } else {
-        repo_path.join(&path)
+        repo_path.join(path)
     };
 
     // 规范化路径并检查是否在仓库目录内
@@ -106,11 +113,11 @@ async fn serve_repo_file(
 
     // 如果是目录
     if requested_path.is_dir() {
-        return serve_directory(server, &repo, &path, &requested_path).await;
+        return serve_directory(server, repo, path, &requested_path).await;
     }
 
     // 服务文件
-    serve_file(server, &requested_path, &path).await
+    serve_file(server, &requested_path, path).await
 }
 
 async fn serve_directory(
@@ -193,10 +200,34 @@ async fn serve_directory(
         }
     });
 
+    // 生成面包屑路径
+    let breadcrumbs: Vec<Breadcrumb> = if request_path.is_empty() {
+        vec![]
+    } else {
+        let mut crumbs = vec![Breadcrumb {
+            name: repo.to_string(),
+            href: format!("/{}/", repo),
+        }];
+        let parts: Vec<&str> = request_path.split('/').filter(|s| !s.is_empty()).collect();
+        let mut accumulated = String::new();
+        for part in parts {
+            if !accumulated.is_empty() {
+                accumulated.push('/');
+            }
+            accumulated.push_str(part);
+            crumbs.push(Breadcrumb {
+                name: part.to_string(),
+                href: format!("/{}/{}/", repo, accumulated),
+            });
+        }
+        crumbs
+    };
+
     let mut tera_ctx = TeraContext::new();
     tera_ctx.insert("repo", repo);
     tera_ctx.insert("path", request_path);
     tera_ctx.insert("entries", &entries);
+    tera_ctx.insert("breadcrumbs", &breadcrumbs);
 
     let html = server.tera.render("dir_index", &tera_ctx)
         .unwrap_or_else(|_| format!("<h1>Index of /{}/{}</h1><p>Template error</p>", repo, request_path));
@@ -213,6 +244,12 @@ struct DirEntry {
     is_dir: bool,
     size: Option<u64>,
     modified: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(serde::Serialize)]
+struct Breadcrumb {
+    name: String,
+    href: String,
 }
 
 async fn serve_file(server: &StaticFileServer, file_path: &StdPath, request_path: &str) -> Response {

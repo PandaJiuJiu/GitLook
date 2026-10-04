@@ -314,6 +314,7 @@ const DEFAULT_HOOK_TEMPLATE: &str = r#"#!/bin/bash
 # Auto-generated - do not edit directly
 
 REPO_NAME="{{REPO_NAME}}"
+GIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WORKTREE="{{WORKTREES_DIR}}/{{REPO_NAME}}"
 BRANCH="{{DEFAULT_BRANCH}}"
 
@@ -322,7 +323,7 @@ while read oldrev newrev refname; do
     # Only deploy the default branch
     if [ "$refname" = "refs/heads/$BRANCH" ]; then
         echo "Deploying $REPO_NAME to $WORKTREE..."
-        git --git-dir="$PWD" --work-tree="$WORKTREE" checkout -f "$BRANCH"
+        git --git-dir="$GIT_DIR" --work-tree="$WORKTREE" checkout -f "$BRANCH"
         echo "Deployment complete for $REPO_NAME"
     fi
 done

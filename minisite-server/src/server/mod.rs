@@ -60,8 +60,8 @@ pub async fn run(config: Config) -> Result<()> {
         // API 路由
         .route("/api/repos", get(api::list_repos))
         .route("/api/repos", post(api::create_repo))
-        .route("/api/repos/:name", delete(api::delete_repo))
-        .route("/api/repos/:name/deploy", post(api::trigger_deploy))
+        .route("/api/repos/{name}", delete(api::delete_repo))
+        .route("/api/repos/{name}/deploy", post(api::trigger_deploy))
         // 静态文件路由
         .merge(StaticFileServer::router())
         // 健康检查

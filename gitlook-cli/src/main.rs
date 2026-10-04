@@ -98,8 +98,8 @@ async fn create_repo(git: &GitManager, name: &str) -> Result<()> {
     println!("   Worktree: {}", repo.worktree_path.display());
     println!("   Default branch: {}", repo.default_branch);
     println!("\nAdd remote and push:");
-    println!("   git remote add gitlook ssh://user@host/{}.git", name);
-    println!("   git push gitlook main");
+    println!("   git remote add minisite ~/minisite/repos/{}.git", name);
+    println!("   git push minisite main --force");
     Ok(())
 }
 

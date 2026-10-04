@@ -21,6 +21,9 @@ pub struct ServerConfig {
     pub request_timeout_secs: u64,
     /// 供 AI/脚本自述用途的 Markdown 文档，在 GET /howto 返回
     pub howto_file: PathBuf,
+    /// 保护 /api/* 的 Bearer token。为空则完全不鉴权（仅适合只监听回环）。
+    /// 留空时从环境变量 MINISITE_API_TOKEN 读取，这样真值不必进配置文件。
+    pub api_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +71,7 @@ impl Default for ServerConfig {
             max_body_size: 100 * 1024 * 1024, // 100MB
             request_timeout_secs: 300,
             howto_file: PathBuf::from("docs/HOWTO.md"),
+            api_token: None,
         }
     }
 }
@@ -141,7 +145,9 @@ impl Config {
                      Run with --init-config to generate one.",
                     path.display()
                 );
-                return Ok(Config::default().expand_paths());
+                let mut config = Config::default();
+                config.resolve_api_token();
+                return Ok(config.expand_paths());
             }
             Err(e) => {
                 return Err(anyhow::anyhow!("Cannot read {}: {}", path.display(), e));
@@ -150,11 +156,25 @@ impl Config {
 
         // 文件存在但解析失败：直接报错。
         // 静默回退到默认配置会让服务用错误的目录启动，比启动失败更难排查。
-        let config: Config = toml::from_str(&toml_str).map_err(|e| {
+        let mut config: Config = toml::from_str(&toml_str).map_err(|e| {
             anyhow::anyhow!("Failed to parse {}: {}", path.display(), e)
         })?;
 
+        config.resolve_api_token();
         Ok(config.expand_paths())
+    }
+
+    /// 配置文件里没写 api_token 时，读环境变量 MINISITE_API_TOKEN。
+    ///
+    /// 走环境变量是为了让真值不必落进配置文件——容器部署时 compose 会把
+    /// 文件挂进镜像，配置文件里写 token 等于把它烤进镜像层。
+    fn resolve_api_token(&mut self) {
+        if self.server.api_token.is_none() {
+            self.server.api_token = std::env::var("MINISITE_API_TOKEN")
+                .ok()
+                .map(|t| t.trim().to_string())
+                .filter(|t| !t.is_empty());
+        }
     }
 
     fn expand_paths(self) -> Self {

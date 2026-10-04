@@ -4,10 +4,15 @@
 # 这份是容器部署用的，指向挂载进来的数据卷。
 #
 # 注意所有路径都是容器内路径，不是宿主机路径。
+#
+# 保护 /api/* 的 Bearer token。
+# 故意留空：真值由 compose 通过环境变量 MINISITE_API_TOKEN 注入，
+# 写在这里的话会跟着这个文件进 git。这个文件只作为说明，实际值在 .env 里。
+# api_token = ""
 
 [server]
 # 容器内绑定所有接口是必须的（否则端口映射进来的流量到不了）。
-# 宿主机上暴露到什么范围，由 compose.yaml 的 ports 决定，与这里无关。
+# 宿主机上暴露到什么范围，由 compose.yml 的 ports 决定，与这里无关。
 host = "0.0.0.0"
 port = 9999
 base_path = ""

@@ -13,18 +13,46 @@ A lightweight self-hosted static-site host. You `git push` HTML/JS/CSS, and it s
 | GET    | `/`                          | Service info (small JSON) |
 | GET    | `/health`                    | Health check, returns `ok` |
 | GET    | `/howto`                     | **This Markdown document** |
-| GET    | `/api/repos`                 | List all repositories |
-| POST   | `/api/repos`                 | Create a repository, body `{"name":"x"}` |
-| DELETE | `/api/repos/{name}`          | Delete a repository |
-| POST   | `/api/repos/{name}/deploy`   | Force-redeploy a repository |
-| GET    | `/{repo}/`                   | Directory index (or auto-generated listing) |
-| GET    | `/{repo}/path/to/file`       | Serve a file from the worktree |
+| GET    | `/api/repos`                 | List repositories — **needs token** |
+| POST   | `/api/repos`                 | Create a repo, body `{"name":"x"}` — **needs token** |
+| DELETE | `/api/repos/{name}`          | Delete a repository — **needs token** |
+| POST   | `/api/repos/{name}/deploy`   | Force-redeploy — **needs token** |
+| GET    | `/{repo}/`                   | Directory index (or auto-generated listing) — public |
+| GET    | `/{repo}/path/to/file`       | Serve a file from the worktree — public |
+
+## Authentication
+
+Hosted sites are public; the management API is not. Every `/api/*` call must
+carry a bearer token:
+
+```bash
+curl -H "Authorization: Bearer $MINISITE_API_TOKEN" ...
+```
+
+Without a valid token the API returns `401` and a JSON body. Token comparison
+is constant-time.
+
+The token comes from the operator, not from you. It is set in the server's
+environment as `MINISITE_API_TOKEN` (or `server.api_token` in `config.toml`).
+If you don't have it, ask for it — you cannot create or delete repositories
+without it. You *can* deploy sites without it, because pushing over git is a
+separate path from the HTTP API:
+
+```bash
+# git push needs no token — it authenticates by filesystem/SSH access
+git push minisite main
+```
+
+If the server was started with no token at all, `/api/*` is open to anyone who
+can reach the port. That's why the shipped deployment publishes on `127.0.0.1`
+by default.
 
 ## End-to-end: deploy your first site
 
 ```bash
-# 1. Create the repo on the server
+# 1. Create the repo on the server (needs token)
 curl -X POST http://HOST:PORT/api/repos \
+     -H "Authorization: Bearer $MINISITE_API_TOKEN" \
      -H 'Content-Type: application/json' \
      -d '{"name":"my-site"}'
 
@@ -82,9 +110,9 @@ Invalid examples that return HTTP 400: `../etc`, `..hidden`, `-foo`, `my.site`.
 
 ## Gotchas
 
-- **No authentication at all.** Anyone who can reach the port can run
-  `POST /api/repos` or `DELETE /api/repos/<name>` and destroy your sites. By
-  default the server is published on `127.0.0.1` only for this reason.
+- **`/api/*` needs a bearer token.** `POST /api/repos`, `DELETE /api/repos/{name}`
+  and `GET /api/repos` return `401` without `Authorization: Bearer <token>`.
+  Sites and `git push` do not. See [Authentication](#authentication).
 - **First push needs `--force`.** The server creates an empty initial commit when you register a repo; your local history diverges from that, so plain `git push` is rejected. Use `git push --force` once, then normal pushes work.
 - **Only the default branch deploys.** Default is `main` (configurable via `git.default_branch` in `config.toml`). Pushes to other branches are accepted by the bare repo but ignored by the post-receive hook.
 - **No build step.** Whatever is in your repo gets served verbatim. Run your bundler/minifier before committing.
@@ -97,24 +125,34 @@ Invalid examples that return HTTP 400: `../etc`, `..hidden`, `-foo`, `my.site`.
 
 ```bash
 # List repos
-curl -s http://HOST:PORT/api/repos | jq
+curl -s -H "Authorization: Bearer $MINISITE_API_TOKEN" \
+     http://HOST:PORT/api/repos | jq
 
 # Create
 curl -s -X POST http://HOST:PORT/api/repos \
+     -H "Authorization: Bearer $MINISITE_API_TOKEN" \
      -H 'Content-Type: application/json' \
      -d '{"name":"blog"}' | jq
 
 # Delete
-curl -s -X DELETE http://HOST:PORT/api/repos/blog | jq
+curl -s -X DELETE http://HOST:PORT/api/repos/blog \
+     -H "Authorization: Bearer $MINISITE_API_TOKEN" | jq
 
 # Force deploy
-curl -s -X POST http://HOST:PORT/api/repos/blog/deploy | jq
+curl -s -X POST http://HOST:PORT/api/repos/blog/deploy \
+     -H "Authorization: Bearer $MINISITE_API_TOKEN" | jq
 
-# Fetch a file
+# Fetch a file (public — no token)
 curl -s http://HOST:PORT/blog/index.html
 
-# Browse (directory listing)
+# Browse (directory listing, public — no token)
 curl -s http://HOST:PORT/blog/
+```
+
+Store the token once per shell to keep the commands short:
+
+```bash
+export MINISITE_API_TOKEN='...'   # ask the operator
 ```
 
 ## What happens on `git push` (internals)

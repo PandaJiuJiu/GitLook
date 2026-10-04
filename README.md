@@ -140,22 +140,53 @@ docker-compose down              # stop
 The service listens on **127.0.0.1:9999 only**. Sites live in `~/minisite/` on
 the host, so the container can be deleted and rebuilt without losing anything.
 
+Set a token in `contrib/.env` before starting — compose refuses to start
+without one:
+
 ```bash
-curl http://127.0.0.1:9999/api/repos -X POST -d '{"name":"my-site"}'
+cd contrib
+echo "MINISITE_API_TOKEN=$(openssl rand -hex 32)" >> .env
+docker-compose up -d --build
+```
+
+```bash
+export MINISITE_API_TOKEN='...'          # from contrib/.env
+
+curl http://127.0.0.1:9999/api/repos -X POST \
+     -H "Authorization: Bearer $MINISITE_API_TOKEN" \
+     -d '{"name":"my-site"}'
+
 git remote add minisite ~/minisite/repos/my-site.git
 git push minisite main --force
+
 curl http://127.0.0.1:9999/my-site/
 ```
 
 `curl http://127.0.0.1:9999/howto` returns a Markdown document describing the
 whole workflow — useful for handing to an AI agent.
 
+### Authentication
+
+Hosted sites are public; the management API is not. `/api/*` requires
+`Authorization: Bearer <token>`, compared in constant time. `git push` is a
+separate path and needs no token.
+
+The token is read from `MINISITE_API_TOKEN` in the environment, falling back to
+`server.api_token` in `config.toml`. It goes in `contrib/.env` (gitignored)
+rather than in a config file, because config files get committed and baked into
+images. If neither is set the API is wide open and the server logs a warning at
+startup.
+
 ### Exposing it to the network
 
-**There is no authentication.** Anyone who can reach the port can create
-repositories, or delete yours with `DELETE /api/repos/{name}`. To publish on
-the LAN, change the `ports:` line in `contrib/compose.yml` from
-`127.0.0.1:9999:9999` to `9999:9999` — but understand what you are opening up.
+With a token set, publishing on the LAN is reasonable — the API that can delete
+your sites is locked. Change the `ports:` line in `contrib/compose.yml` from
+`127.0.0.1:9999:9999` to `9999:9999`.
+
+Two things to keep in mind: there is still **no TLS**, so the token crosses the
+network in plaintext and can be replayed by anyone who captures it. And the token
+is the only thing standing between a LAN guest and `DELETE /api/repos/{name}`.
+For anything beyond a trusted network, put TLS in front first.
 
 ### Running under podman
 

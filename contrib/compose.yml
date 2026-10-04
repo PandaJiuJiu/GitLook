@@ -35,6 +35,12 @@ services:
       # 别人删掉你的站点，再改这一行。
       - "127.0.0.1:9999:9999"
 
+    # 保护 /api/* 的 Bearer token。真值放在同目录的 .env（已 gitignore），
+    # 不写进本文件或 config.docker.toml——那两样都会进 git。
+    # 没设置时 /api/* 完全不鉴权，任何能连上的人都能删仓库。
+    environment:
+      - MINISITE_API_TOKEN=${MINISITE_API_TOKEN:?not set - put one in contrib/.env, generate with openssl rand -hex 32}
+
     volumes:
       # 配置与静态资源：直接挂仓库里的源文件，避免副本和漂移。
       # 相对路径以本文件所在的 contrib/ 为基准。

@@ -16,6 +16,48 @@ pub struct RepoInfo {
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+/// 求 `from` 目录到 `to` 路径的相对路径。
+///
+/// 只处理同为绝对或同为相对的路径；相差层数过多时返回 None，
+/// 免得产出一长串 `../..` 的荒谬结果。
+fn relative_path(from: &Path, to: &Path) -> Option<PathBuf> {
+    if from.is_absolute() != to.is_absolute() {
+        return None;
+    }
+
+    let mut from_parts = from.components();
+    let mut to_parts = to.components();
+
+    // 剥掉公共前缀
+    loop {
+        match (from_parts.clone().next(), to_parts.clone().next()) {
+            (Some(a), Some(b)) if a == b => {
+                from_parts.next();
+                to_parts.next();
+            }
+            _ => break,
+        }
+    }
+
+    let ups = from_parts.count();
+    if ups > 16 {
+        return None;
+    }
+
+    let rest: PathBuf = to_parts.collect();
+    let mut out = PathBuf::new();
+    for _ in 0..ups {
+        out.push("..");
+    }
+    out.push(rest);
+
+    if out.as_os_str().is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum GitError {
     #[error("Repository not found: {0}")]
@@ -135,6 +177,28 @@ impl GitManager {
 
         // 创建工作树目录
         tokio_fs::create_dir_all(&worktree_path).await?;
+
+        // 把 worktree 位置记成相对于裸仓库所在目录的相对路径，供 post-receive
+        // 钩子在运行时解析（见 DEFAULT_HOOK_TEMPLATE 里的说明）。
+        let relpath = relative_path(bare_path.parent().unwrap(), &worktree_path)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Cannot express worktree path {} relative to {}",
+                    worktree_path.display(),
+                    self.repos_dir.display()
+                )
+            })?;
+
+        let output = Command::new("git")
+            .args(["--git-dir", bare_path.to_str().unwrap(), "config", "minisite.worktree-relpath"])
+            .arg(&relpath)
+            .output()
+            .context("Failed to execute git config")?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(GitError::OperationFailed(stderr.to_string()).into());
+        }
 
         // 初始化工作树并创建初始提交
         let output = Command::new("git")
@@ -313,17 +377,103 @@ const DEFAULT_HOOK_TEMPLATE: &str = r#"#!/bin/bash
 # Auto-generated - do not edit directly
 
 REPO_NAME="{{REPO_NAME}}"
-GIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-WORKTREE="{{WORKTREES_DIR}}/{{REPO_NAME}}"
 BRANCH="{{DEFAULT_BRANCH}}"
+
+# 从脚本自身位置推出 GIT_DIR，不用 $GIT_DIR 环境变量：
+# 容器部署时 push 由宿主机发起，钩子在宿主机上跑，$GIT_DIR 会是宿主机路径。
+GIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# worktree 路径存成"相对于裸仓库所在目录"的相对路径，在创建仓库时写入。
+# 钩子执行时才知道自己被挂载到了哪里，因此不能把绝对路径写死——
+# 宿主机上是 ~/minisite/worktrees，容器里是 /var/lib/minisite/worktrees，
+# 写死哪个都会在另一边失效。相对路径两边都成立。
+REL="$(git --git-dir="$GIT_DIR" config --get minisite.worktree-relpath)"
+if [ -z "$REL" ]; then
+    echo "minisite: 仓库 $REPO_NAME 缺少 minisite.worktree-relpath 配置，无法部署" >&2
+    exit 1
+fi
+WORKTREE="$(cd "$GIT_DIR/.." && cd "$REL" && pwd)"
+
+if [ ! -d "$WORKTREE" ]; then
+    mkdir -p "$WORKTREE" || {
+        echo "minisite: 无法创建 worktree $WORKTREE" >&2
+        exit 1
+    }
+fi
 
 # Read stdin (oldrev newrev refname)
 while read oldrev newrev refname; do
     # Only deploy the default branch
     if [ "$refname" = "refs/heads/$BRANCH" ]; then
         echo "Deploying $REPO_NAME to $WORKTREE..."
-        git --git-dir="$GIT_DIR" --work-tree="$WORKTREE" checkout -f "$BRANCH"
-        echo "Deployment complete for $REPO_NAME"
+        if git --git-dir="$GIT_DIR" --work-tree="$WORKTREE" checkout -f "$BRANCH"; then
+            echo "Deployment complete for $REPO_NAME"
+        else
+            echo "minisite: 部署 $REPO_NAME 失败" >&2
+            exit 1
+        fi
     fi
 done
 "#;
+#[cfg(test)]
+mod tests {
+    use super::relative_path;
+
+    #[test]
+    fn sibling_directories() {
+        // 这是容器部署的实际布局：repos 与 worktrees 是同级目录
+        assert_eq!(
+            relative_path(
+                std::path::Path::new("/var/lib/minisite/repos"),
+                std::path::Path::new("/var/lib/minisite/worktrees/demo"),
+            ),
+            Some("../worktrees/demo".into())
+        );
+    }
+
+    #[test]
+    fn sibling_directories_under_home() {
+        // 同一个相对路径在宿主机上也成立，这就是不用绝对路径的原因
+        assert_eq!(
+            relative_path(
+                std::path::Path::new("/home/zac/minisite/repos"),
+                std::path::Path::new("/home/zac/minisite/worktrees/demo"),
+            ),
+            Some("../worktrees/demo".into())
+        );
+    }
+
+    #[test]
+    fn descends_from_common_ancestor() {
+        assert_eq!(
+            relative_path(
+                std::path::Path::new("/srv/git/repos"),
+                std::path::Path::new("/srv/sites/www"),
+            ),
+            Some("../../sites/www".into())
+        );
+    }
+
+    #[test]
+    fn mixed_absolute_and_relative_is_rejected() {
+        assert_eq!(
+            relative_path(
+                std::path::Path::new("/var/lib/minisite/repos"),
+                std::path::Path::new("worktrees/demo"),
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn unreasonably_distant_paths_are_rejected() {
+        let deep = "/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y";
+        assert_eq!(
+            relative_path(
+                std::path::Path::new(deep),
+                std::path::Path::new("/var/lib/minisite/worktrees/demo"),
+            ),
+            None
+        );
+    }
+}

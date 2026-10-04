@@ -126,12 +126,16 @@ async fn serve_directory(
     request_path: &str,
     dir_path: &StdPath,
 ) -> Response {
+    // index.html 优先。静态站托管的常态是目录里带首页，这时给用户一个文件
+    // 列表而不是站点本身显然不对。auto_index 只决定"没有 index.html 时要不要
+    // 生成列表"，不该决定 index.html 算不算数。
+    let index_path = dir_path.join("index.html");
+    if index_path.is_file() {
+        let href = format!("{}/index.html", request_path.trim_end_matches('/'));
+        return serve_file(server, &index_path, &href).await;
+    }
+
     if !server.auto_index {
-        // 尝试查找 index.html
-        let index_path = dir_path.join("index.html");
-        if index_path.exists() {
-            return serve_file(server, &index_path, &format!("{}/index.html", request_path.trim_end_matches('/'))).await;
-        }
         if server.spa_fallback {
             let spa_index = server.worktrees_dir.join(repo).join("index.html");
             if spa_index.exists() {

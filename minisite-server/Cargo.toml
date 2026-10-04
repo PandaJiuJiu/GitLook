@@ -20,10 +20,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 
-# Git operations - using git2 (libgit2 bindings)
-git2 = { version = "0.18", features = ["vendored-libgit2"] }
-
-# Removed gix dependencies
+# Git operations - 通过 std::process::Command 调用 git 命令行。
+# 不用 git2：git2::Repository 包装 *mut git_repository，既非 Send 也非 Sync，
+# 引用无法跨 .await，所以 axum handler 里根本编译不过。CLI 开销约 1ms，
+# 相对一次 HTTP 请求可忽略，还省掉了 libgit2 的 C 依赖。
 
 # Template engine for directory indexing
 tera = "1.19"

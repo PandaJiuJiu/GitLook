@@ -1,0 +1,39 @@
+# minisite 容器内配置。
+#
+# 与仓库根目录的 config.toml 分开：那份是本机开发用的，指向 tmp/ 下的目录；
+# 这份是容器部署用的，指向挂载进来的数据卷。
+#
+# 注意所有路径都是容器内路径，不是宿主机路径。
+
+[server]
+# 容器内绑定所有接口是必须的（否则端口映射进来的流量到不了）。
+# 宿主机上暴露到什么范围，由 compose.yaml 的 ports 决定，与这里无关。
+host = "0.0.0.0"
+port = 9999
+base_path = ""
+max_body_size = 104857600
+request_timeout_secs = 300
+# 挂载进来的，所以改完立刻生效，不需要重启容器（服务按 mtime 判断是否重读）
+howto_file = "/etc/minisite/docs/HOWTO.md"
+
+[git]
+repos_dir = "/var/lib/minisite/repos"
+worktrees_dir = "/var/lib/minisite/worktrees"
+default_branch = "main"
+# 创建仓库时把这个脚本拷进 <repo>.git/hooks/post-receive
+hook_template = "/etc/minisite/hooks/post-receive"
+
+[static_files]
+auto_index = true
+index_template = "/etc/minisite/templates/dir_index.html.tera"
+spa_fallback = false
+cache_max_age = 3600
+
+[webhook]
+enabled = false
+secret = ""
+allowed_events = ["push"]
+
+[logging]
+level = "info"
+json_format = false

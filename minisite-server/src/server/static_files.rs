@@ -252,7 +252,7 @@ struct Breadcrumb {
     href: String,
 }
 
-async fn serve_file(server: &StaticFileServer, file_path: &StdPath, request_path: &str) -> Response {
+async fn serve_file(server: &StaticFileServer, file_path: &StdPath, _request_path: &str) -> Response {
     let mime = from_path(file_path).first_or_octet_stream();
 
     let file = match fs::File::open(file_path).await {

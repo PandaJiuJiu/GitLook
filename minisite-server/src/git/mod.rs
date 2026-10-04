@@ -68,7 +68,6 @@ impl GitManager {
             if name.ends_with(".git") {
                 let repo_name = name.strip_suffix(".git").unwrap().to_string();
                 let bare_path = entry.path();
-                let worktree_path = self.worktrees_dir.join(&repo_name);
 
                 let meta = self.get_repo_metadata(&bare_path, &repo_name).await?;
                 repos.push(meta);
@@ -145,7 +144,6 @@ impl GitManager {
             .context("Failed to execute git checkout")?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
             // 可能是因为还没有提交，忽略这个错误
         }
 

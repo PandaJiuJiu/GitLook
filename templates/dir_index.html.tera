@@ -56,8 +56,8 @@
                 {% if entry.name == ".." %}{% set row_class = "parent" %}{% endif %}
                 <tr class="{{ row_class }}">
                     <td><a href="{{ entry.href }}">{{ entry.name }}</a></td>
-                    <td class="size">{{ entry.size | filesizeformat }}</td>
-                    <td class="modified">{{ entry.modified | date(format="%Y-%m-%d %H:%M") }}</td>
+                    <td class="size">{{ entry.size_display }}</td>
+                    <td class="modified">{{ entry.modified_display }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

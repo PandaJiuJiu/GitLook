@@ -4,6 +4,7 @@ port = 9999
 base_path = ""
 max_body_size = 104857600
 request_timeout_secs = 300
+howto_file = "/home/zac/git/minisite/docs/HOWTO.md"
 
 [git]
 repos_dir = "/home/zac/git/minisite/tmp/repos"

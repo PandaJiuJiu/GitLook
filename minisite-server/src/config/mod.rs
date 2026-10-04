@@ -17,6 +17,8 @@ pub struct ServerConfig {
     pub base_path: String,
     pub max_body_size: usize,
     pub request_timeout_secs: u64,
+    /// 供 AI/脚本自述用途的 Markdown 文档，在 GET /howto 返回
+    pub howto_file: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,6 +61,7 @@ impl Default for Config {
                 base_path: "".into(),
                 max_body_size: 100 * 1024 * 1024, // 100MB
                 request_timeout_secs: 300,
+                howto_file: PathBuf::from("docs/HOWTO.md"),
             },
             git: GitConfig {
                 repos_dir: home.join("minisite/repos"),
@@ -119,6 +122,10 @@ impl Config {
         };
 
         Config {
+            server: ServerConfig {
+                howto_file: expand(self.server.howto_file),
+                ..self.server
+            },
             git: GitConfig {
                 repos_dir: expand(self.git.repos_dir),
                 worktrees_dir: expand(self.git.worktrees_dir),

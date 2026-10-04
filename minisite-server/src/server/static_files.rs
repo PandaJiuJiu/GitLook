@@ -159,8 +159,8 @@ async fn serve_directory(
             name: "..".to_string(),
             href: format!("/{}/{}/", repo, parent_path.trim_start_matches('/')),
             is_dir: true,
-            size: None,
-            modified: None,
+            size_display: "—".to_string(),
+            modified_display: "—".to_string(),
         });
     }
 
@@ -186,8 +186,20 @@ async fn serve_directory(
             name,
             href,
             is_dir,
-            size: if is_dir { None } else { Some(metadata.len()) },
-            modified: metadata.modified().ok().map(|t| chrono::DateTime::<chrono::Utc>::from(t)),
+            size_display: if is_dir {
+                "—".to_string()
+            } else {
+                human_size(metadata.len())
+            },
+            modified_display: metadata
+                .modified()
+                .ok()
+                .map(|t| {
+                    chrono::DateTime::<chrono::Utc>::from(t)
+                        .format("%Y-%m-%d %H:%M")
+                        .to_string()
+                })
+                .unwrap_or_else(|| "—".to_string()),
         });
     }
 
@@ -229,8 +241,18 @@ async fn serve_directory(
     tera_ctx.insert("entries", &entries);
     tera_ctx.insert("breadcrumbs", &breadcrumbs);
 
-    let html = server.tera.render("dir_index", &tera_ctx)
-        .unwrap_or_else(|_| format!("<h1>Index of /{}/{}</h1><p>Template error</p>", repo, request_path));
+    let html = match server.tera.render("dir_index", &tera_ctx) {
+        Ok(html) => html,
+        Err(e) => {
+            tracing::error!("Failed to render dir_index template for /{}/{}: {:?}", repo, request_path, e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                format!("Template render error for /{}/{}: {}", repo, request_path, e),
+            )
+                .into_response();
+        }
+    };
 
     let mut resp = Html(html).into_response();
     set_cache_headers(&mut resp, server.cache_max_age);
@@ -242,8 +264,25 @@ struct DirEntry {
     name: String,
     href: String,
     is_dir: bool,
-    size: Option<u64>,
-    modified: Option<chrono::DateTime<chrono::Utc>>,
+    /// 预渲染好的展示字符串（避免向模板传 null，Tera 处理 null 不可靠）
+    size_display: String,
+    modified_display: String,
+}
+
+/// 字节数转为人类可读格式
+fn human_size(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    let mut v = bytes as f64;
+    let mut i = 0;
+    while v >= 1024.0 && i < UNITS.len() - 1 {
+        v /= 1024.0;
+        i += 1;
+    }
+    if i == 0 {
+        format!("{} {}", bytes, UNITS[0])
+    } else {
+        format!("{:.1} {}", v, UNITS[i])
+    }
 }
 
 #[derive(serde::Serialize)]
@@ -338,15 +377,10 @@ const BUILTIN_INDEX_TEMPLATE: &str = r#"
     <div class="repo-header">
         <div class="repo-name">{{ repo }}</div>
         <div class="breadcrumb">
-            {% if path %}
-                <a href="/{{ repo }}/">/</a>
-                {% set parts = path.split("/") %}
-                {% for part in parts if part %}
-                    / <a href="/{{ repo }}/{{ path | truncate(path.len() - part.len() - 1, true, "") }}/">{{ part }}</a>
-                {% endfor %}
-            {% else %}
-                /
-            {% endif %}
+            {% for crumb in breadcrumbs %}
+                {% if loop.first %}{% else %} / {% endif %}<a href="{{ crumb.href }}">{{ crumb.name }}</a>
+            {% endfor %}
+            {% if path == "" %}/{% endif %}
         </div>
     </div>
 
@@ -363,10 +397,13 @@ const BUILTIN_INDEX_TEMPLATE: &str = r#"
             </thead>
             <tbody>
                 {% for entry in entries %}
-                <tr class="{{ 'dir' if entry.is_dir else 'file' }}{{ ' parent' if entry.name == '..' else '' }}">
+                {% set row_class = "file" %}
+                {% if entry.is_dir %}{% set row_class = "dir" %}{% endif %}
+                {% if entry.name == ".." %}{% set row_class = "parent" %}{% endif %}
+                <tr class="{{ row_class }}">
                     <td><a href="{{ entry.href }}">{{ entry.name }}</a></td>
-                    <td class="size">{{ entry.size | filesizeformat }}</td>
-                    <td class="modified">{{ entry.modified | date(format="%Y-%m-%d %H:%M") }}</td>
+                    <td class="size">{{ entry.size_display }}</td>
+                    <td class="modified">{{ entry.modified_display }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

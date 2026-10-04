@@ -4,7 +4,7 @@ mod static_files;
 
 use crate::config::Config;
 use crate::git::GitManager;
-use crate::server::static_files::StaticFileServer;
+use crate::server::{howto::HowTo, static_files::StaticFileServer};
 use anyhow::Result;
 use axum::{
     Router,
@@ -24,6 +24,7 @@ use tracing::info;
 pub struct AppState {
     pub git: Arc<GitManager>,
     pub static_files: Arc<StaticFileServer>,
+    pub howto: HowTo,
 }
 
 pub async fn run(config: Config) -> Result<()> {
@@ -48,6 +49,7 @@ pub async fn run(config: Config) -> Result<()> {
     let state = AppState {
         git: git_manager,
         static_files: static_server,
+        howto: HowTo::new(config.server.howto_file.clone()),
     };
 
     // CORS 配置
@@ -61,7 +63,7 @@ pub async fn run(config: Config) -> Result<()> {
         // 根入口
         .route("/", get(root_info))
         // HowTo 端点（供 AI/脚本使用）
-        .route("/howto", get(howto::howto_markdown))
+        .route("/howto", get(howto::howto))
         // API 路由
         .route("/api/repos", get(api::list_repos))
         .route("/api/repos", post(api::create_repo))

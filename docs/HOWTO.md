@@ -1,6 +1,6 @@
 # minisite — HowTo
 
-> One-page reference for AI agents and scripts. `curl http://HOST:PORT/howto` (this file) or `/howto.json` (structured) or `/howto.txt` (plain).
+> One-page reference for AI agents and scripts. Fetch it with `curl http://HOST:PORT/howto`.
 
 ## What this is
 
@@ -13,8 +13,6 @@ A lightweight self-hosted static-site host. You `git push` HTML/JS/CSS, and it s
 | GET    | `/`                          | Service info (small JSON) |
 | GET    | `/health`                    | Health check, returns `ok` |
 | GET    | `/howto`                     | **This Markdown document** |
-| GET    | `/howto.json`                | Structured HowTo in JSON |
-| GET    | `/howto.txt`                 | Plain-text HowTo |
 | GET    | `/api/repos`                 | List all repositories |
 | POST   | `/api/repos`                 | Create a repository, body `{"name":"x"}` |
 | DELETE | `/api/repos/{name}`          | Delete a repository |

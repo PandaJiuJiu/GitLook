@@ -35,10 +35,10 @@ git init -b main
 git add . && git commit -m 'init'
 
 # 3. Add minisite as a git remote
-#    The bare-repo path is whatever the server uses, e.g.:
-#      /var/lib/minisite/repos/my-site.git
-#      ssh://user@host/srv/minisite/repos/my-site.git   (if SSH is set up)
-git remote add minisite /var/lib/minisite/repos/my-site.git
+#    路径要用宿主机上的那个，不是容器里的 /var/lib/minisite。
+#    仓库目录由宿主机 ~/minisite/repos 挂进容器，所以直接写宿主机路径：
+#      ~/minisite/repos/my-site.git
+git remote add minisite ~/minisite/repos/my-site.git
 
 # 4. Push (--force is often needed the first time, because the server
 #    creates an initial empty commit when the repo is registered)
@@ -82,6 +82,9 @@ Invalid examples that return HTTP 400: `../etc`, `..hidden`, `-foo`, `my.site`.
 
 ## Gotchas
 
+- **No authentication at all.** Anyone who can reach the port can run
+  `POST /api/repos` or `DELETE /api/repos/<name>` and destroy your sites. By
+  default the server is published on `127.0.0.1` only for this reason.
 - **First push needs `--force`.** The server creates an empty initial commit when you register a repo; your local history diverges from that, so plain `git push` is rejected. Use `git push --force` once, then normal pushes work.
 - **Only the default branch deploys.** Default is `main` (configurable via `git.default_branch` in `config.toml`). Pushes to other branches are accepted by the bare repo but ignored by the post-receive hook.
 - **No build step.** Whatever is in your repo gets served verbatim. Run your bundler/minifier before committing.

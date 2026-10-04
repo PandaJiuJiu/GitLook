@@ -1,0 +1,61 @@
+# minisite —— 静态站托管服务
+#
+# 用法：
+#   docker-compose up -d --build    # 构建并启动
+#   docker-compose logs -f          # 看日志
+#   docker-compose restart          # 重启（改了 config.docker.toml 后用）
+#   docker-compose down             # 停止
+#
+# 数据落在宿主机 ~/minisite/ 下，容器删了数据还在。
+# 推送站点就是把仓库加为 remote 后 git push，路径直接用宿主机路径，
+# 不需要在容器里开 SSH：
+#   git remote add minisite ~/minisite/repos/<name>.git
+
+# 用 2.4 而不是 3.x：networks.default.external 只在 v2 格式里合法，
+# 3.x 会直接报 "contains unsupported option: 'external'"。这里用不到 3.x 的特性。
+version: "2.4"
+
+services:
+  minisite:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        # 基础镜像仓库前缀。默认 Docker Hub；访问不通时在同目录的 .env 里写
+        # MINISITE_REGISTRY=public.ecr.aws/docker/library 之类即可，不用改这个文件。
+        REGISTRY: ${MINISITE_REGISTRY:-docker.io/library}
+    image: minisite:latest
+    container_name: minisite
+    restart: unless-stopped
+
+    ports:
+      # 默认只发布到回环地址。minisite 目前完全没有鉴权：任何能连上这个端口
+      # 的人都可以 POST /api/repos 建仓库、DELETE /api/repos/{name} 删仓库。
+      # 改成 "9999:9999" 才会让局域网内所有设备都能访问——确认你能接受
+      # 别人删掉你的站点，再改这一行。
+      - "127.0.0.1:9999:9999"
+
+    volumes:
+      # 配置与静态资源：直接挂仓库里的源文件，避免副本和漂移。
+      # 相对路径以本文件所在的 contrib/ 为基准。
+      - ./config.docker.toml:/etc/minisite/config.toml:ro
+      - ../templates:/etc/minisite/templates:ro
+      - ../hooks:/etc/minisite/hooks:ro
+      # docs 可写：改完 HOWTO.md 不用重启服务，下个请求就生效
+      - ../docs:/etc/minisite/docs
+
+      # 数据目录：容器销毁后仍保留
+      - /home/zac/minisite/repos:/var/lib/minisite/repos
+      - /home/zac/minisite/worktrees:/var/lib/minisite/worktrees
+
+# 复用 podman 自带的 podman 网络，不要让 compose 自动建 contrib_default。
+# 原因：这台机器上 docker 是 podman 3.4.4，compose v1 建出来的网络带 CNI
+# configVersion 1.0.0，而 podman 自带的 CNI 插件只认 0.4.0，容器会直接失败：
+#   CNI network "contrib_default" not found
+# podman 自带的 podman 网络是 0.4.0，正常可用。
+#
+# 换到真正的 Docker 部署时，删掉下面这段，让 compose 自己建网络。
+networks:
+  default:
+    external:
+      name: podman

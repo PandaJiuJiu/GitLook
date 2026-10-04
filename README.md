@@ -126,24 +126,52 @@ client push ──► bare repo (repos/) ──post-receive hook──► worktr
 
 ## Deployment
 
-### systemd
-
-Copy `contrib/systemd/minisite.service` to `/etc/systemd/system/` and edit paths:
+Docker is the deployment method. `docker-compose` handles building, running,
+and restart-on-boot:
 
 ```bash
-sudo cp contrib/systemd/minisite.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now minisite
+cd contrib
+docker-compose up -d --build     # build and start
+docker-compose logs -f           # follow logs
+docker-compose restart           # restart (needed after editing config)
+docker-compose down              # stop
 ```
 
-### Docker
+The service listens on **127.0.0.1:9999 only**. Sites live in `~/minisite/` on
+the host, so the container can be deleted and rebuilt without losing anything.
 
 ```bash
-docker build -f contrib/docker/Dockerfile -t minisite .
-docker run -d -p 9999:9999 \
-  -v /var/lib/minisite:/var/lib/minisite \
-  -v /etc/minisite:/etc/minisite \
-  minisite
+curl http://127.0.0.1:9999/api/repos -X POST -d '{"name":"my-site"}'
+git remote add minisite ~/minisite/repos/my-site.git
+git push minisite main --force
+curl http://127.0.0.1:9999/my-site/
+```
+
+`curl http://127.0.0.1:9999/howto` returns a Markdown document describing the
+whole workflow — useful for handing to an AI agent.
+
+### Exposing it to the network
+
+**There is no authentication.** Anyone who can reach the port can create
+repositories, or delete yours with `DELETE /api/repos/{name}`. To publish on
+the LAN, change the `ports:` line in `contrib/compose.yml` from
+`127.0.0.1:9999:9999` to `9999:9999` — but understand what you are opening up.
+
+### Running under podman
+
+If `docker` is podman rather than Docker, two things need attention:
+
+- **Socket.** Point compose at the user socket:
+  `export DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock`
+- **Network.** `compose.yml` reuses podman's built-in `podman` network as an
+  external network, because compose-created networks get CNI configVersion
+  1.0.0 that podman's bundled plugins reject. On real Docker, delete that
+  `networks:` block.
+
+If Docker Hub is unreachable, put the registry prefix in `contrib/.env`:
+
+```
+MINISITE_REGISTRY=public.ecr.aws/docker/library
 ```
 
 ## Development

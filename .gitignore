@@ -1,0 +1,27 @@
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (local overrides)
+config.local.toml
+
+# Runtime data
+repos/
+worktrees/
+data/
+logs/
+
+# Minisite specific
+minisite-repos/
+minisite-worktrees/

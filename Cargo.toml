@@ -1,0 +1,12 @@
+[workspace]
+members = ["minisite-server", "minisite-cli"]
+resolver = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+debug = true

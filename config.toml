@@ -1,0 +1,31 @@
+# Minisite Configuration
+# Generated at 2026-10-04 09:30:00 UTC
+
+[server]
+host = "0.0.0.0"
+port = 9999
+base_path = ""
+max_body_size = 104857600
+request_timeout_secs = 300
+
+[git]
+repos_dir = "~/minisite/repos"
+worktrees_dir = "~/minisite/worktrees"
+default_branch = "main"
+hook_template = "hooks/post-receive"
+
+[static_files]
+auto_index = true
+index_template = "templates/dir_index.html.tera"
+spa_fallback = false
+cache_max_age = 3600
+
+[webhook]
+enabled = false
+secret = ""
+allowed_events = ["push"]
+
+[logging]
+level = "info"
+json_format = false
+file_output = null

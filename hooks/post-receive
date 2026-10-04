@@ -1,0 +1,17 @@
+#!/bin/bash
+# minisite post-receive hook
+# Auto-generated - do not edit directly
+
+REPO_NAME="{{REPO_NAME}}"
+WORKTREE="{{WORKTREES_DIR}}/{{REPO_NAME}}"
+BRANCH="{{DEFAULT_BRANCH}}"
+
+# Read stdin (oldrev newrev refname)
+while read oldrev newrev refname; do
+    # Only deploy the default branch
+    if [ "$refname" = "refs/heads/$BRANCH" ]; then
+        echo "Deploying $REPO_NAME to $WORKTREE..."
+        git --git-dir="$PWD" --work-tree="$WORKTREE" checkout -f "$BRANCH"
+        echo "Deployment complete for $REPO_NAME"
+    fi
+done

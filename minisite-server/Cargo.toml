@@ -1,0 +1,60 @@
+[package]
+name = "minisite-server"
+version = "0.1.0"
+edition = "2021"
+description = "Minisite HTTP server with Git push deployment"
+
+[dependencies]
+# HTTP Server
+axum = { version = "0.7", features = ["ws", "macros"] }
+tokio = { version = "1.38", features = ["full", "rt-multi-thread", "macros", "signal"] }
+tower-http = { version = "0.6", features = ["fs", "cors", "trace", "compression-br"] }
+hyper = { version = "1.1", features = ["full"] }
+http = "1.1"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Configuration
+figment = { version = "0.10", features = ["toml", "env", "serde_json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Git operations - using git2 (libgit2 bindings)
+git2 = { version = "0.18", features = ["vendored-libgit2"] }
+
+# Removed gix dependencies
+
+# Template engine for directory indexing
+tera = "1.19"
+
+# Async file operations
+tokio-util = { version = "0.7", features = ["io"] }
+futures = "0.3"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-appender = "0.2"
+
+# Utilities
+anyhow = "1.0"
+thiserror = "1.0"
+uuid = { version = "1.7", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+mime_guess = "2.0"
+percent-encoding = "2.3"
+kstring = "1.0"
+dirs = "5.0"
+
+# Compression
+flate2 = "1.0"
+zstd = "0.13"
+
+# Temp file
+tempfile = "3.10"
+
+[dev-dependencies]
+tempfile = "3.10"
+reqwest = { version = "0.12", features = ["json", "blocking"] }

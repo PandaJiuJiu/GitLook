@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Index of /{{ repo }}/{{ path }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #333; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #495057; }
+        tr:hover td { background: #f8f9fa; }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .dir a::before { content: "📁 "; }
+        .file a::before { content: "📄 "; }
+        .parent a::before { content: "⬆️ "; }
+        .size { color: #6c757d; font-size: 0.9rem; white-space: nowrap; }
+        .modified { color: #6c757d; font-size: 0.85rem; white-space: nowrap; }
+        .empty { color: #adb5bd; font-style: italic; padding: 2rem; text-align: center; }
+        .repo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .repo-name { font-size: 1.5rem; font-weight: 600; color: #2c3e50; }
+        .breadcrumb { color: #6c757d; font-size: 0.9rem; }
+        .breadcrumb a { color: #6c757d; }
+        .breadcrumb a:hover { color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="repo-header">
+        <div class="repo-name">{{ repo }}</div>
+        <div class="breadcrumb">
+            {% if path %}
+                <a href="/{{ repo }}/">/</a>
+                {% set parts = path.split("/") %}
+                {% for part in parts if part %}
+                    / <a href="/{{ repo }}/{{ path | truncate(path.len() - part.len() - 1, true, "") }}/">{{ part }}</a>
+                {% endfor %}
+            {% else %}
+                /
+            {% endif %}
+        </div>
+    </div>
+
+    <h1>Index of /{{ repo }}/{{ path }}</h1>
+
+    {% if entries %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Name</th>
+                    <th style="width: 15%;">Size</th>
+                    <th style="width: 35%;">Modified</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr class="{{ 'dir' if entry.is_dir else 'file' }}{{ ' parent' if entry.name == '..' else '' }}">
+                    <td><a href="{{ entry.href }}">{{ entry.name }}</a></td>
+                    <td class="size">{{ entry.size | filesizeformat }}</td>
+                    <td class="modified">{{ entry.modified | date(format="%Y-%m-%d %H:%M") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty">Directory is empty</p>
+    {% endif %}
+</body>
+</html>

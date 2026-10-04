@@ -22,8 +22,10 @@ pub struct ServerConfig {
     /// 供 AI/脚本自述用途的 Markdown 文档，在 GET /howto 返回
     pub howto_file: PathBuf,
     /// 保护 /api/* 的 Bearer token。为空则完全不鉴权（仅适合只监听回环）。
-    /// 留空时从环境变量 gitlook_API_TOKEN 读取，这样真值不必进配置文件。
+    /// 留空时从环境变量 MINISITE_API_TOKEN 读取，这样真值不必进配置文件。
     pub api_token: Option<String>,
+    /// 首页 footer 里的 GitHub 链接
+    pub github_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,6 +76,7 @@ impl Default for ServerConfig {
             request_timeout_secs: 300,
             howto_file: PathBuf::from("docs/HOWTO.md"),
             api_token: None,
+            github_url: "https://github.com/PandaJiuJiu/GitLook".to_string(),
         }
     }
 }
@@ -167,13 +170,13 @@ impl Config {
         Ok(config.expand_paths())
     }
 
-    /// 配置文件里没写 api_token 时，读环境变量 gitlook_API_TOKEN。
+    /// 配置文件里没写 api_token 时，读环境变量 MINISITE_API_TOKEN。
     ///
     /// 走环境变量是为了让真值不必落进配置文件——容器部署时 compose 会把
     /// 文件挂进镜像，配置文件里写 token 等于把它烤进镜像层。
     fn resolve_api_token(&mut self) {
         if self.server.api_token.is_none() {
-            self.server.api_token = std::env::var("gitlook_API_TOKEN")
+            self.server.api_token = std::env::var("MINISITE_API_TOKEN")
                 .ok()
                 .map(|t| t.trim().to_string())
                 .filter(|t| !t.is_empty());
@@ -194,6 +197,7 @@ impl Config {
         Config {
             server: ServerConfig {
                 howto_file: expand(self.server.howto_file),
+                github_url: self.server.github_url,
                 ..self.server
             },
             git: GitConfig {

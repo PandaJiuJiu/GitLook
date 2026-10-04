@@ -155,7 +155,7 @@
         {% endif %}
 
         <footer>
-            <a href="{{ howto_url }}">HowTo</a> &middot; this page is machine-readable at
+            <a href="{{ github_url }}">GitHub</a> &middot; <a href="{{ howto_url }}">HowTo</a> &middot; this page is machine-readable at
             <code>{{ base_url }}/</code> with <code>Accept: application/json</code>
         </footer>
     </div>

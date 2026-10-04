@@ -100,6 +100,7 @@ pub async fn home(State(state): State<AppState>, headers: HeaderMap) -> Response
         "site_count": sites.len(),
         "base_url": "/",
         "howto_url": "/howto",
+        "github_url": state.github_url,
         "api_repos_url": "/api/repos",
     })).unwrap_or_else(|e| {
         tracing::error!("Failed to build home template context: {:?}", e);

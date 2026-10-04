@@ -28,6 +28,8 @@ pub struct AppState {
     pub howto: HowTo,
     /// 保护 /api/* 的 token；None 表示不鉴权
     pub api_token: Option<Arc<String>>,
+    /// 首页 footer 里的 GitHub 链接
+    pub github_url: String,
 }
 
 /// 校验 `Authorization: Bearer <token>`。
@@ -102,11 +104,12 @@ pub async fn run(config: Config) -> Result<()> {
         static_files: static_server,
         howto: HowTo::new(config.server.howto_file.clone()),
         api_token: config.server.api_token.clone().map(Arc::new),
+        github_url: config.server.github_url.clone(),
     };
 
     if state.api_token.is_none() {
         tracing::warn!(
-            "No API token configured (server.api_token or gitlook_API_TOKEN). \
+            "No API token configured (server.api_token or MINISITE_API_TOKEN). \
              /api/* is open to anyone who can reach this port — anyone can create \
              or delete repositories. Set a token before exposing it beyond loopback."
         );

@@ -19,19 +19,21 @@ base_path = ""
 max_body_size = 104857600
 request_timeout_secs = 300
 # 挂载进来的，所以改完立刻生效，不需要重启容器（服务按 mtime 判断是否重读）
-howto_file = "/etc/Gitlook/docs/HOWTO.md"
+howto_file = "/etc/minisite/docs/HOWTO.md"
+# 首页 footer 里的 GitHub 链接
+github_url = "https://github.com/PandaJiuJiu/GitLook"
 
 [git]
-repos_dir = "/var/lib/Gitlook/repos"
-worktrees_dir = "/var/lib/Gitlook/worktrees"
+repos_dir = "/var/lib/minisite/repos"
+worktrees_dir = "/var/lib/minisite/worktrees"
 default_branch = "main"
 # 创建仓库时把这个脚本拷进 <repo>.git/hooks/post-receive
-hook_template = "/etc/Gitlook/hooks/post-receive"
+hook_template = "/etc/minisite/hooks/post-receive"
 
 [static_files]
 auto_index = true
-index_template = "/etc/Gitlook/templates/dir_index.html.tera"
-home_template = "/etc/Gitlook/templates/home.html.tera"
+index_template = "/etc/minisite/templates/dir_index.html.tera"
+home_template = "/etc/minisite/templates/home.html.tera"
 spa_fallback = false
 cache_max_age = 3600
 

@@ -1,4 +1,5 @@
 mod api;
+mod howto;
 mod static_files;
 
 use crate::config::Config;
@@ -57,6 +58,13 @@ pub async fn run(config: Config) -> Result<()> {
 
     // 构建路由
     let app = Router::new()
+        // 根入口
+        .route("/", get(root_info))
+        // HowTo 端点（供 AI/脚本使用）
+        .route("/howto", get(howto::howto_markdown))
+        .route("/howto.md", get(howto::howto_markdown))
+        .route("/howto.json", get(howto::howto_json))
+        .route("/howto.txt", get(howto::howto_plain))
         // API 路由
         .route("/api/repos", get(api::list_repos))
         .route("/api/repos", post(api::create_repo))
@@ -86,6 +94,27 @@ pub async fn run(config: Config) -> Result<()> {
 
 async fn health_check() -> &'static str {
     "ok"
+}
+
+async fn root_info() -> axum::Json<serde_json::Value> {
+    axum::Json(serde_json::json!({
+        "service": "minisite",
+        "version": env!("CARGO_PKG_VERSION"),
+        "howto": {
+            "markdown": "/howto",
+            "json": "/howto.json",
+            "plain": "/howto.txt"
+        },
+        "endpoints": {
+            "health": "/health",
+            "api": {
+                "list_repos": "GET /api/repos",
+                "create_repo": "POST /api/repos",
+                "delete_repo": "DELETE /api/repos/{name}",
+                "deploy_repo": "POST /api/repos/{name}/deploy"
+            }
+        }
+    }))
 }
 
 async fn shutdown_signal() {

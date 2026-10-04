@@ -19,7 +19,8 @@ services:
   minisite:
     build:
       context: ..
-      dockerfile: Dockerfile
+      # 相对 context（仓库根）解析，不是相对本文件
+      dockerfile: contrib/Dockerfile
       args:
         # 基础镜像仓库前缀。默认 Docker Hub；访问不通时在同目录的 .env 里写
         # MINISITE_REGISTRY=public.ecr.aws/docker/library 之类即可，不用改这个文件。

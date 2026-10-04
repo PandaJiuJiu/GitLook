@@ -19,27 +19,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 依赖单独成层：改源码时这一层命中缓存，不用重新编译 200+ 个 crate。
 # 先用占位源码把依赖图解出来，删掉产物，再拷真实源码。
 COPY Cargo.toml Cargo.lock ./
-COPY minisite-server/Cargo.toml ./minisite-server/
-COPY minisite-cli/Cargo.toml ./minisite-cli/
+COPY gitlook-server/Cargo.toml ./gitlook-server/
+COPY gitlook-cli/Cargo.toml ./gitlook-cli/
 
-RUN mkdir -p minisite-server/src minisite-cli/src \
-    && echo "" > minisite-server/src/lib.rs \
-    && echo "fn main() {}" > minisite-server/src/main.rs \
-    && echo "fn main() {}" > minisite-cli/src/main.rs \
+RUN mkdir -p gitlook-server/src gitlook-cli/src \
+    && echo "" > gitlook-server/src/lib.rs \
+    && echo "fn main() {}" > gitlook-server/src/main.rs \
+    && echo "fn main() {}" > gitlook-cli/src/main.rs \
     && cargo build --release \
-    && rm -rf minisite-server/src minisite-cli/src
+    && rm -rf gitlook-server/src gitlook-cli/src
 
 # 真实源码。
 # 必须 touch：COPY 会保留宿主机文件的原始 mtime，而真实源码通常比上一层的
 # 占位产物还旧，cargo 的 fingerprint 只看 mtime，会判定"没变化"而跳过编译，
 # 结果 COPY 进去的仍是占位二进制（两个文件大小完全相同就是征兆）。
-COPY minisite-server ./minisite-server
-COPY minisite-cli ./minisite-cli
+COPY gitlook-server ./gitlook-server
+COPY gitlook-cli ./gitlook-cli
 RUN set -e; \
-    find minisite-server/src minisite-cli/src -name '*.rs' -exec touch {} +; \
+    find gitlook-server/src gitlook-cli/src -name '*.rs' -exec touch {} +; \
     cargo build --release; \
-    s=$(stat -c%s target/release/minisite-server); \
-    c=$(stat -c%s target/release/minisite-cli); \
+    s=$(stat -c%s target/release/gitlook-server); \
+    c=$(stat -c%s target/release/gitlook-cli); \
     echo "built: server=$s cli=$c"; \
     if [ "$s" -lt 5000000 ] || [ "$c" -lt 1000000 ] || [ "$s" -eq "$c" ]; then \
         echo "产物大小异常，多半是占位二进制没被替换"; \
@@ -54,8 +54,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git ca-certificates tzdata \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /build/target/release/minisite-server /usr/local/bin/
-COPY --from=builder /build/target/release/minisite-cli /usr/local/bin/
+COPY --from=builder /build/target/release/gitlook-server /usr/local/bin/
+COPY --from=builder /build/target/release/gitlook-cli /usr/local/bin/
 
 # 容器内以 root 运行，这是刻意的：
 # rootless podman 下容器 uid 0 映射到宿主机当前用户，这样 bind mount 进来的
@@ -69,5 +69,5 @@ WORKDIR /var/lib/minisite
 
 EXPOSE 9999
 
-ENTRYPOINT ["/usr/local/bin/minisite-server"]
+ENTRYPOINT ["/usr/local/bin/gitlook-server"]
 CMD ["--config", "/etc/minisite/config.toml"]

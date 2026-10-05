@@ -4,17 +4,17 @@ port = 9999
 base_path = ""
 max_body_size = 104857600
 request_timeout_secs = 300
-howto_file = "/home/zac/git/minisite/docs/HOWTO.md"
+howto_file = "/home/zac/git/gitlook/docs/HOWTO.md"
 
 [git]
-repos_dir = "/home/zac/git/minisite/tmp/repos"
-worktrees_dir = "/home/zac/git/minisite/tmp/worktrees"
+repos_dir = "/home/zac/git/gitlook/tmp/repos"
+worktrees_dir = "/home/zac/git/gitlook/tmp/worktrees"
 default_branch = "main"
-hook_template = "/home/zac/git/minisite/hooks/post-receive"
+hook_template = "/home/zac/git/gitlook/hooks/post-receive"
 
 [static_files]
 auto_index = true
-index_template = "/home/zac/git/minisite/templates/dir_index.html.tera"
+index_template = "/home/zac/git/gitlook/templates/dir_index.html.tera"
 spa_fallback = false
 cache_max_age = 3600
 

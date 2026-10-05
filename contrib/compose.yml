@@ -6,10 +6,10 @@
 #   docker-compose restart          # 重启（改了 config.docker.toml 后用）
 #   docker-compose down             # 停止
 #
-# 数据落在宿主机 ~/minisite/ 下，容器删了数据还在。
+# 数据落在宿主机 ~/gitlook/ 下，容器删了数据还在。
 # 推送站点就是把仓库加为 remote 后 git push，路径直接用宿主机路径，
 # 不需要在容器里开 SSH：
-#   git remote add minisite ~/minisite/repos/<name>.git
+#   git remote add gitlook ~/gitlook/repos/<name>.git
 
 # 用 2.4 而不是 3.x：networks.default.external 只在 v2 格式里合法，
 # 3.x 会直接报 "contains unsupported option: 'external'"。这里用不到 3.x 的特性。
@@ -23,8 +23,8 @@ services:
       dockerfile: contrib/Dockerfile
       args:
         # 基础镜像仓库前缀。默认 Docker Hub；访问不通时在同目录的 .env 里写
-        # MINISITE_REGISTRY=public.ecr.aws/docker/library 之类即可，不用改这个文件。
-        REGISTRY: ${MINISITE_REGISTRY:-docker.io/library}
+        # GITLOOK_REGISTRY=public.ecr.aws/docker/library 之类即可，不用改这个文件。
+        REGISTRY: ${GITLOOK_REGISTRY:-docker.io/library}
     image: gitlook:latest
     container_name: gitlook
     restart: unless-stopped
@@ -39,20 +39,20 @@ services:
     # 不写进本文件或 config.docker.toml——那两样都会进 git。
     # 没设置时 /api/* 完全不鉴权，任何能连上的人都能删仓库。
     environment:
-      - MINISITE_API_TOKEN=${MINISITE_API_TOKEN:?not set - put one in contrib/.env, generate with openssl rand -hex 32}
+      - GITLOOK_API_TOKEN=${GITLOOK_API_TOKEN:?not set - put one in contrib/.env, generate with openssl rand -hex 32}
 
     volumes:
       # 配置与静态资源：直接挂仓库里的源文件，避免副本和漂移。
       # 相对路径以本文件所在的 contrib/ 为基准。
-      - ./config.docker.toml:/etc/minisite/config.toml:ro
-      - ../templates:/etc/minisite/templates:ro
-      - ../hooks:/etc/minisite/hooks:ro
+      - ./config.docker.toml:/etc/gitlook/config.toml:ro
+      - ../templates:/etc/gitlook/templates:ro
+      - ../hooks:/etc/gitlook/hooks:ro
       # docs 可写：改完 HOWTO.md 不用重启服务，下个请求就生效
-      - ../docs:/etc/minisite/docs
+      - ../docs:/etc/gitlook/docs
 
       # 数据目录：容器销毁后仍保留
-      - /home/zac/minisite/repos:/var/lib/minisite/repos
-      - /home/zac/minisite/worktrees:/var/lib/minisite/worktrees
+      - /home/zac/gitlook/repos:/var/lib/gitlook/repos
+      - /home/zac/gitlook/worktrees:/var/lib/gitlook/worktrees
 
 # 复用 podman 自带的 podman 网络，不要让 compose 自动建 contrib_default。
 # 原因：这台机器上 docker 是 podman 3.4.4，compose v1 建出来的网络带 CNI

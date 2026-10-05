@@ -1,5 +1,5 @@
 #!/bin/bash
-# minisite post-receive hook
+# gitlook post-receive hook
 # Auto-generated - do not edit directly
 
 REPO_NAME="{{REPO_NAME}}"
@@ -11,11 +11,11 @@ GIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # worktree 路径存成"相对于裸仓库所在目录"的相对路径，在创建仓库时写入。
 # 钩子执行时才知道自己被挂载到了哪里，因此不能把绝对路径写死——
-# 宿主机上是 ~/minisite/worktrees，容器里是 /var/lib/minisite/worktrees，
+# 宿主机上是 ~/gitlook/worktrees，容器里是 /var/lib/gitlook/worktrees，
 # 写死哪个都会在另一边失效。相对路径两边都成立。
-REL="$(git --git-dir="$GIT_DIR" config --get minisite.worktree-relpath)"
+REL="$(git --git-dir="$GIT_DIR" config --get gitlook.worktree-relpath)"
 if [ -z "$REL" ]; then
-    echo "minisite: 仓库 $REPO_NAME 缺少 minisite.worktree-relpath 配置，无法部署" >&2
+    echo "gitlook: 仓库 $REPO_NAME 缺少 gitlook.worktree-relpath 配置，无法部署" >&2
     exit 1
 fi
 WORKTREE="$(cd "$GIT_DIR/.." && cd "$REL" && pwd)"

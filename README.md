@@ -18,13 +18,13 @@ git clone git@github.com:PandaJiuJiu/GitLook.git
 cd GitLook/contrib
 
 # Generate a secure token (or use your own)
-echo "MINISITE_API_TOKEN=$(openssl rand -hex 32)" >> .env
+echo "GITLOOK_API_TOKEN=$(openssl rand -hex 32)" >> .env
 
 # Start the service
 docker-compose up -d --build
 ```
 
-The service runs on port **9999**. Sites are stored in `~/minisite/` on the host.
+The service runs on port **9999**. Sites are stored in `~/gitlook/` on the host.
 
 ## Usage
 
@@ -33,7 +33,7 @@ The service runs on port **9999**. Sites are stored in `~/minisite/` on the host
 ```bash
 # 1. Create a repository via API (needs token)
 curl -X POST http://localhost:9999/api/repos \
-     -H "Authorization: Bearer $MINISITE_API_TOKEN" \
+     -H "Authorization: Bearer $GITLOOK_API_TOKEN" \
      -d '{"name":"my-site"}'
 
 # 2. Push your content
@@ -41,8 +41,8 @@ cd ~/my-site-content
 git init -b main
 echo "<h1>Hello</h1>" > index.html
 git add . && git commit -m "init"
-git remote add minisite ~/minisite/repos/my-site.git
-git push minisite main --force
+git remote add gitlook ~/gitlook/repos/my-site.git
+git push gitlook main --force
 
 # 3. Visit the site
 curl http://localhost:9999/my-site/
@@ -52,16 +52,16 @@ curl http://localhost:9999/my-site/
 
 ```bash
 # List sites
-curl -H "Authorization: Bearer $MINISITE_API_TOKEN" \
+curl -H "Authorization: Bearer $GITLOOK_API_TOKEN" \
      http://localhost:9999/api/repos
 
 # Delete a site
 curl -X DELETE http://localhost:9999/api/repos/my-site \
-     -H "Authorization: Bearer $MINISITE_API_TOKEN"
+     -H "Authorization: Bearer $GITLOOK_API_TOKEN"
 
 # Force redeploy
 curl -X POST http://localhost:9999/api/repos/my-site/deploy \
-     -H "Authorization: Bearer $MINISITE_API_TOKEN"
+     -H "Authorization: Bearer $GITLOOK_API_TOKEN"
 ```
 
 ### Other endpoints
@@ -90,7 +90,7 @@ After editing, restart: `docker-compose restart`
 
 The API (`/api/*`) requires a Bearer token. Sites themselves are public.
 
-- Token goes in `contrib/.env` as `MINISITE_API_TOKEN`
+- Token goes in `contrib/.env` as `GITLOOK_API_TOKEN`
 - Or set `server.api_token` in config
 - Without a token, API is open — only suitable for localhost
 

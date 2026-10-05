@@ -6,7 +6,7 @@
 # 注意所有路径都是容器内路径，不是宿主机路径。
 #
 # 保护 /api/* 的 Bearer token。
-# 故意留空：真值由 compose 通过环境变量 MINISITE_API_TOKEN 注入，
+# 故意留空：真值由 compose 通过环境变量 GITLOOK_API_TOKEN 注入，
 # 写在这里的话会跟着这个文件进 git。这个文件只作为说明，实际值在 .env 里。
 # api_token = ""
 
@@ -19,21 +19,21 @@ base_path = ""
 max_body_size = 104857600
 request_timeout_secs = 300
 # 挂载进来的，所以改完立刻生效，不需要重启容器（服务按 mtime 判断是否重读）
-howto_file = "/etc/minisite/docs/HOWTO.md"
+howto_file = "/etc/gitlook/docs/HOWTO.md"
 # 首页 footer 里的 GitHub 链接
 github_url = "https://github.com/PandaJiuJiu/GitLook"
 
 [git]
-repos_dir = "/var/lib/minisite/repos"
-worktrees_dir = "/var/lib/minisite/worktrees"
+repos_dir = "/var/lib/gitlook/repos"
+worktrees_dir = "/var/lib/gitlook/worktrees"
 default_branch = "main"
 # 创建仓库时把这个脚本拷进 <repo>.git/hooks/post-receive
-hook_template = "/etc/minisite/hooks/post-receive"
+hook_template = "/etc/gitlook/hooks/post-receive"
 
 [static_files]
 auto_index = true
-index_template = "/etc/minisite/templates/dir_index.html.tera"
-home_template = "/etc/minisite/templates/home.html.tera"
+index_template = "/etc/gitlook/templates/dir_index.html.tera"
+home_template = "/etc/gitlook/templates/home.html.tera"
 spa_fallback = false
 cache_max_age = 3600
 

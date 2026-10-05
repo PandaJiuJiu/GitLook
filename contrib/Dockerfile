@@ -2,7 +2,7 @@
 
 # 基础镜像仓库前缀。默认 Docker Hub；若本机访问不通，改用镜像源：
 #   podman build --build-arg REGISTRY=public.ecr.aws/docker/library ...
-# 或在 compose.yaml 同目录放 .env 里设 MINISITE_REGISTRY=...
+# 或在 compose.yaml 同目录放 .env 里设 GITLOOK_REGISTRY=...
 ARG REGISTRY=docker.io/library
 
 # 构建阶段。刻意与运行阶段分离：rust 镜像 ~1.3GB，运行镜像 ~120MB。
@@ -65,9 +65,9 @@ COPY --from=builder /build/target/release/gitlook-cli /usr/local/bin/
 #
 # 刻意不设 USER，因此没有任何写保护；配置、模板、HowTo 全部通过
 # compose 的 bind mount 挂进来，宿主机上改完立即生效。
-WORKDIR /var/lib/minisite
+WORKDIR /var/lib/gitlook
 
 EXPOSE 9999
 
 ENTRYPOINT ["/usr/local/bin/gitlook-server"]
-CMD ["--config", "/etc/minisite/config.toml"]
+CMD ["--config", "/etc/gitlook/config.toml"]

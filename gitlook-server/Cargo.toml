@@ -28,6 +28,13 @@ toml = "0.8"
 # Template engine for directory indexing
 tera = "1.19"
 
+# Auth: SQLite for users/sessions, argon2 for password hashing, rand for session tokens.
+# rusqlite 用 bundled feature：自包含 libsqlite3，镜像里无需装 libsqlite3-dev。
+rusqlite = { version = "0.32", features = ["bundled"] }
+argon2 = "0.5"
+rand = "0.8"
+base64 = { version = "0.22", features = ["std"] }
+
 # Async file operations
 tokio-util = { version = "0.7", features = ["io"] }
 futures = "0.3"

@@ -1,10 +1,6 @@
-mod config;
-mod git;
-mod server;
-
+use gitlook_server::{config::Config, server};
 use anyhow::Result;
 use clap::Parser;
-use gitlook_server::config::Config;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -30,6 +26,10 @@ struct Args {
     /// Git worktrees directory
     #[arg(long)]
     worktrees_dir: Option<String>,
+
+    /// SQLite database path (users + sessions)
+    #[arg(long)]
+    db_path: Option<String>,
 
     /// Enable debug logging
     #[arg(short, long)]
@@ -75,13 +75,16 @@ async fn main() -> Result<()> {
     if let Some(worktrees_dir) = args.worktrees_dir {
         config.git.worktrees_dir = worktrees_dir.into();
     }
+    if let Some(db_path) = args.db_path {
+        config.git.db_path = db_path.into();
+    }
 
     info!("gitlook starting...");
     info!("Config file: {}", args.config);
     info!("Config: {:?}", config);
 
     // 运行服务器
-    gitlook_server::server::run(config).await?;
+    server::run(config).await?;
 
     Ok(())
 }

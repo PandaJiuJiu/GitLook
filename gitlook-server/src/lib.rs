@@ -3,3 +3,6 @@
 pub mod config;
 pub mod git;
 pub mod server;
+pub mod auth;
+
+pub use config::Config;

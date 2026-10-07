@@ -34,6 +34,9 @@ impl StaticFileServer {
         auto_index: bool,
         index_template: PathBuf,
         home_template: PathBuf,
+        setup_template: PathBuf,
+        login_template: PathBuf,
+        admin_template: PathBuf,
         spa_fallback: bool,
         cache_max_age: u64,
     ) -> Result<Self> {
@@ -48,6 +51,21 @@ impl StaticFileServer {
             tera.add_template_file(&home_template, Some("home"))?;
         } else {
             tera.add_raw_template("home", BUILTIN_HOME_TEMPLATE)?;
+        }
+        if setup_template.exists() {
+            tera.add_template_file(&setup_template, Some("setup"))?;
+        } else {
+            tera.add_raw_template("setup", BUILTIN_SETUP_TEMPLATE)?;
+        }
+        if login_template.exists() {
+            tera.add_template_file(&login_template, Some("login"))?;
+        } else {
+            tera.add_raw_template("login", BUILTIN_LOGIN_TEMPLATE)?;
+        }
+        if admin_template.exists() {
+            tera.add_template_file(&admin_template, Some("admin"))?;
+        } else {
+            tera.add_raw_template("admin", BUILTIN_ADMIN_TEMPLATE)?;
         }
         tera.autoescape_on(vec![]);
 
@@ -64,6 +82,26 @@ impl StaticFileServer {
     /// 渲染首页（GET /）
     pub fn render_home(&self, ctx: &TeraContext) -> Result<String> {
         self.tera.render("home", ctx).map_err(Into::into)
+    }
+
+    /// 渲染首次设置页面（GET /setup）
+    pub fn render_setup(&self, ctx: &TeraContext) -> Result<String> {
+        self.tera.render("setup", ctx).map_err(Into::into)
+    }
+
+    /// 渲染登录页面（GET /login）
+    pub fn render_login(&self, ctx: &TeraContext) -> Result<String> {
+        self.tera.render("login", ctx).map_err(Into::into)
+    }
+
+    /// 渲染管理页面（GET /admin）
+    pub fn render_admin(&self, ctx: &TeraContext) -> Result<String> {
+        self.tera.render("admin", ctx).map_err(Into::into)
+    }
+
+    /// 渲染任意模板（供 auth handlers 使用内置 fallback 模板）
+    pub fn render_template(&self, name: &str, ctx: &TeraContext) -> Result<String> {
+        self.tera.render(name, ctx).map_err(Into::into)
     }
 
     /// 构建路由
@@ -454,8 +492,189 @@ a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}
 <span class="badge">{{ site.branch }}</span> <span class="muted">{{ site.updated_display }}</span></a>
 {% endfor %}
 {% else %}
-<p class="muted">No sites yet. Create one via <a href="{{ api_repos_url }}">API</a> (needs Bearer token), then push to it.</p>
+<p class="muted">No sites yet. Create one via <a href="{{ api_repos_url }}">API</a> (login at /login), then push to it.</p>
 {% endif %}
 <p class="muted"><a href="{{ howto_url }}">HowTo</a></p>
+</body>
+</html>"#;
+
+/// templates/setup.html.tera 不存在时的兜底模板。
+const BUILTIN_SETUP_TEMPLATE: &str = r#"<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gitlook — 首次设置</title>
+<style>
+:root { --bg:#f7f8fa; --card:#fff; --text:#1a1d21; --muted:#6b7280; --border:#e5e7eb; --accent:#2563eb; --accent-soft:#eff4ff; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04); }
+@media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171a21;--text:#e6e8ec;--muted:#9aa3b2;--border:#262b34;--accent:#6ea8fe;--accent-soft:#16233b;--shadow:0 1px 2px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.25);}}
+*{box-sizing:border-box}body{margin:0;padding:3rem 1.5rem 4rem;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.6}
+.wrap{max-width:420px;margin:0 auto}.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;box-shadow:var(--shadow)}
+.logo{display:inline-flex;align-items:center;gap:.55rem;font-size:1.5rem;font-weight:650}.logo .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--accent)}
+h1{margin:1.5rem 0 0;font-size:1.25rem}.desc{color:var(--muted);margin:.5rem 0 1.5rem}
+label{display:block;margin-bottom:.35rem;font-size:.9rem}.input{width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:1rem}
+.input:focus{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}
+.btn{width:100%;margin-top:1rem;padding:.7rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.05)}.error{color:#dc2626;font-size:.85rem;margin-top:.5rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<div class="logo"><span class="dot"></span> Gitlook</div>
+<h1>首次设置</h1>
+<p class="desc">检测到暂无管理员账号，请创建第一个管理员。</p>
+<form method="post">
+<label>用户名</label>
+<input class="input" name="username" autocomplete="username" required>
+<label>密码</label>
+<input type="password" class="input" name="password" autocomplete="new-password" required minlength="8">
+<label>确认密码</label>
+<input type="password" class="input" name="confirm" autocomplete="new-password" required minlength="8">
+<!-- FORM_ERROR -->
+<button class="btn" type="submit">创建并登录</button>
+</form>
+</div>
+</div>
+</body>
+</html>"#;
+
+/// templates/login.html.tera 不存在时的兜底模板。
+const BUILTIN_LOGIN_TEMPLATE: &str = r#"<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gitlook — 登录</title>
+<style>
+:root { --bg:#f7f8fa; --card:#fff; --text:#1a1d21; --muted:#6b7280; --border:#e5e7eb; --accent:#2563eb; --accent-soft:#eff4ff; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04); }
+@media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171a21;--text:#e6e8ec;--muted:#9aa3b2;--border:#262b34;--accent:#6ea8fe;--accent-soft:#16233b;--shadow:0 1px 2px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.25);}}
+*{box-sizing:border-box}body{margin:0;padding:3rem 1.5rem 4rem;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.6}
+.wrap{max-width:420px;margin:0 auto}.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;box-shadow:var(--shadow)}
+.logo{display:inline-flex;align-items:center;gap:.55rem;font-size:1.5rem;font-weight:650}.logo .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--accent)}
+h1{margin:1.5rem 0 0;font-size:1.25rem}.desc{color:var(--muted);margin:.5rem 0 1.5rem}
+label{display:block;margin-bottom:.35rem;font-size:.9rem}.input{width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:1rem}
+.input:focus{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}
+.btn{width:100%;margin-top:1rem;padding:.7rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.05)}.error{color:#dc2626;font-size:.85rem;margin-top:.5rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<div class="logo"><span class="dot"></span> Gitlook</div>
+<h1>登录</h1>
+<p class="desc">输入用户名和密码访问管理面板。</p>
+<form method="post">
+<input type="hidden" name="next" value="{{ next }}">
+<label>用户名</label>
+<input class="input" name="username" autocomplete="username" required autofocus>
+<label>密码</label>
+<input type="password" class="input" name="password" autocomplete="current-password" required>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<button class="btn" type="submit">登录</button>
+</form>
+</div>
+</div>
+</body>
+</html>"#;
+
+/// templates/admin.html.tera 不存在时的兜底模板。
+const BUILTIN_ADMIN_TEMPLATE: &str = r#"<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gitlook — 管理面板</title>
+<style>
+:root { --bg:#f7f8fa; --card:#fff; --text:#1a1d21; --muted:#6b7280; --border:#e5e7eb; --accent:#2563eb; --accent-soft:#eff4ff; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04); }
+@media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171a21;--text:#e6e8ec;--muted:#9aa3b2;--border:#262b34;--accent:#6ea8fe;--accent-soft:#16233b;--shadow:0 1px 2px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.25);}}
+*{box-sizing:border-box}body{margin:0;padding:3rem 1.5rem 4rem;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto}
+header{margin-bottom:2rem}.logo{display:inline-flex;align-items:center;gap:.55rem;font-size:1.5rem;font-weight:650}.logo .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1.5rem}
+h2{margin:0 0 1rem;font-size:1.1rem}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border)}th{background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:.85rem}tr:hover td{background:var(--accent-soft)}
+.btn{display:inline-block;padding:.5rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:.9rem;font-weight:600;cursor:pointer;text-decoration:none}.btn:hover{filter:brightness(1.05)}
+.btn-danger{background:#dc2626}.btn-danger:hover{filter:brightness(1.05)}
+.btn-ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}.btn-ghost:hover{background:var(--accent-soft)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}@media(max-width:600px){.form-row{grid-template-columns:1fr}}
+.input{width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:.95rem}
+.input:focus{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}
+.actions{display:flex;gap:.5rem}.muted{color:var(--muted);font-size:.85rem}
+footer{margin-top:2rem;color:var(--muted);font-size:.85rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div class="logo"><span class="dot"></span> Gitlook</div>
+<p class="muted">管理面板 — 当前用户：<strong>{{ current_username }}</strong></p>
+</header>
+
+<div class="card">
+<h2>用户列表</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:60px">ID</th><th>用户名</th><th>创建时间</th><th>最后登录</th><th style="width:120px">操作</th></tr></thead>
+<tbody>
+{% for u in users %}
+<tr>
+<td>{{ u.id }}</td>
+<td>{{ u.username }}{% if u.id == current_user_id %} <span class="muted">(当前)</span>{% endif %}</td>
+<td>{{ u.created_at }}</td>
+<td>{{ u.last_login_at | default(value="—") }}</td>
+<td class="actions">
+{% if u.id != current_user_id %}
+<form method="post" action="/admin/users/{{ u.id }}" style="display:inline" onsubmit="return confirm('确定删除 {{ u.username }} 吗？');">
+<button class="btn btn-danger" type="submit">删除</button>
+</form>
+{% else %}
+<span class="muted">—</span>
+{% endif %}
+</td>
+</tr>
+{% else %}
+<tr><td colspan="5" class="muted" style="text-align:center;padding:2rem">暂无用户</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="card">
+<h2>新建用户</h2>
+<form method="post" action="/admin">
+<div class="form-row">
+<div><label>用户名</label><input class="input" name="username" required></div>
+<div><label>密码</label><input type="password" class="input" name="password" required minlength="8"></div>
+</div>
+<div class="form-row">
+<div><label>确认密码</label><input type="password" class="input" name="confirm" required minlength="8"></div>
+<div></div>
+</div>
+<button class="btn" type="submit">创建</button>
+</form>
+</div>
+
+<div class="card">
+<h2>修改密码</h2>
+<form method="post" action="/admin/password">
+<div class="form-row">
+<div><label>当前密码</label><input type="password" class="input" name="current" required></div>
+<div><label>新密码</label><input type="password" class="input" name="new" required minlength="8"></div>
+</div>
+<div class="form-row">
+<div><label>确认新密码</label><input type="password" class="input" name="confirm" required minlength="8"></div>
+<div></div>
+</div>
+<button class="btn" type="submit">更新密码</button>
+</form>
+</div>
+
+<footer>
+<a href="/">返回首页</a> · <form method="post" action="/logout" style="display:inline"><button class="btn-ghost" type="submit">登出</button></form>
+</footer>
+</div>
 </body>
 </html>"#;

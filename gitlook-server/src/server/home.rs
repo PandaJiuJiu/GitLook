@@ -88,7 +88,7 @@ pub async fn home(State(state): State<AppState>, headers: HeaderMap) -> Response
                     create_repo: "POST /api/repos",
                     delete_repo: "DELETE /api/repos/{name}",
                     deploy_repo: "POST /api/repos/{name}/deploy",
-                    auth: "Authorization: Bearer <token>",
+                    auth: "Cookie: gitlook_session=<token> (login at /login)",
                 },
             },
         })

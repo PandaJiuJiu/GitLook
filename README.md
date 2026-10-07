@@ -17,23 +17,26 @@ Lightweight self-hosted static site hosting with Git push deployment. Push HTML 
 git clone git@github.com:PandaJiuJiu/GitLook.git
 cd GitLook/contrib
 
-# Generate a secure token (or use your own)
-echo "GITLOOK_API_TOKEN=$(openssl rand -hex 32)" >> .env
-
 # Start the service
 docker-compose up -d --build
 ```
 
 The service runs on port **9999**. Sites are stored in `~/gitlook/` on the host.
 
+On first access, visit `http://localhost:9999/setup` to create the admin account.
+
 ## Usage
 
 ### Deploy a site
 
 ```bash
-# 1. Create a repository via API (needs token)
-curl -X POST http://localhost:9999/api/repos \
-     -H "Authorization: Bearer $GITLOOK_API_TOKEN" \
+# 1. Create a repository via API (needs login)
+# First login to get a session cookie, then use it:
+curl -c cookies.txt -X POST http://localhost:9999/login \
+     -d 'username=admin&password=yourpassword&next=/admin'
+
+curl -b cookies.txt -X POST http://localhost:9999/api/repos \
+     -H 'Content-Type: application/json' \
      -d '{"name":"my-site"}'
 
 # 2. Push your content
@@ -51,17 +54,14 @@ curl http://localhost:9999/my-site/
 ### Management
 
 ```bash
-# List sites
-curl -H "Authorization: Bearer $GITLOOK_API_TOKEN" \
-     http://localhost:9999/api/repos
+# List sites (login first to get cookies)
+curl -b cookies.txt http://localhost:9999/api/repos
 
 # Delete a site
-curl -X DELETE http://localhost:9999/api/repos/my-site \
-     -H "Authorization: Bearer $GITLOOK_API_TOKEN"
+curl -b cookies.txt -X DELETE http://localhost:9999/api/repos/my-site
 
 # Force redeploy
-curl -X POST http://localhost:9999/api/repos/my-site/deploy \
-     -H "Authorization: Bearer $GITLOOK_API_TOKEN"
+curl -b cookies.txt -X POST http://localhost:9999/api/repos/my-site/deploy
 ```
 
 ### Other endpoints
@@ -73,6 +73,10 @@ curl -X POST http://localhost:9999/api/repos/my-site/deploy \
 | `GET /health` | Health check |
 | `GET /site-name/` | Directory listing or index.html |
 | `GET /site-name/path/to/file` | Static file |
+| `GET /setup` | First-time admin setup (redirects to /login if admin exists) |
+| `GET /login` | Login page |
+| `POST /logout` | Logout |
+| `GET /admin` | Admin panel (manage users, change password) |
 
 ## Configuration
 
@@ -81,18 +85,27 @@ Edit `config.docker.toml`:
 - `server.host` / `server.port` — listen address
 - `server.github_url` — GitHub link in footer
 - `git.repos_dir` / `git.worktrees_dir` — where data lives
+- `git.db_path` — SQLite database for users/sessions
 - `static_files.auto_index` — enable directory listing
 - `static_files.index_template` — template for directory pages
+- `static_files.home_template` — template for home page
+- `static_files.setup_template` — template for first-time setup
+- `static_files.login_template` — template for login page
+- `static_files.admin_template` — template for admin panel
 
 After editing, restart: `docker-compose restart`
 
 ## Authentication
 
-The API (`/api/*`) requires a Bearer token. Sites themselves are public.
+The management API (`/api/*`) and admin panel (`/admin/*`) require a session cookie.
 
-- Token goes in `contrib/.env` as `GITLOOK_API_TOKEN`
-- Or set `server.api_token` in config
-- Without a token, API is open — only suitable for localhost
+- First visit: go to `/setup` to create the admin account
+- Subsequent visits: log in at `/login` — a `gitlook_session` cookie is set
+- Use the cookie for API calls: `curl -b cookies.txt ...`
+- Session expires after 30 days; change password to invalidate all sessions
+- Without a valid session, `/api/*` returns `401`, `/admin/*` redirects to `/login`
+
+To reset a forgotten password: log in as another admin at `/admin` and use the "修改密码" form, or delete `gitlook.db` and restart to re-run `/setup`.
 
 ## Troubleshooting
 

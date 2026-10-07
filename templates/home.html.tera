@@ -148,7 +148,7 @@
         <div class="empty">
             <h2>No sites yet</h2>
             <p>Create one, then push to it:</p>
-            <p><code>curl -X POST {{ api_repos_url }} -H "Authorization: Bearer $TOKEN" -d '{"name":"my-site"}'</code></p>
+            <p><code>curl -X POST {{ api_repos_url }} -H "Cookie: gitlook_session=$TOKEN" -d '{"name":"my-site"}'</code></p>
             <p><code>git push Gitlook main --force</code></p>
             <p><a href="{{ howto_url }}">Read the HowTo</a></p>
         </div>

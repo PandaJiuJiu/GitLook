@@ -20,32 +20,56 @@ A lightweight self-hosted static-site host. You `git push` HTML/JS/CSS, and it s
 | GET    | `/{repo}/`                   | Directory index (or auto-generated listing) — public |
 | GET    | `/{repo}/path/to/file`       | Serve a file from the worktree — public |
 
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET    | `/`                          | Service info (small JSON) |
+| GET    | `/health`                    | Health check, returns `ok` |
+| GET    | `/howto`                     | **This Markdown document** |
+| GET    | `/api/repos`                 | List repositories — **needs login** |
+| POST   | `/api/repos`                 | Create a repo, body `{"name":"x"}` — **needs login** |
+| DELETE | `/api/repos/{name}`          | Delete a repository — **needs login** |
+| POST   | `/api/repos/{name}/deploy`   | Force-redeploy — **needs login** |
+| GET    | `/{repo}/`                   | Directory index (or auto-generated listing) — public |
+| GET    | `/{repo}/path/to/file`       | Serve a file from the worktree — public |
+| GET    | `/setup`                     | First-time admin setup — public (redirects to /login if admin exists) |
+| GET    | `/login`                     | Login page — public |
+| POST   | `/logout`                    | Logout — needs login |
+| GET    | `/admin`                     | Admin panel — needs login |
+| POST   | `/admin`                     | Create user — needs login |
+| POST   | `/admin/password`            | Change own password — needs login |
+| DELETE | `/admin/users/{id}`          | Delete user — needs login |
+
 ## Authentication
 
-Hosted sites are public; the management API is not. Every `/api/*` call must
-carry a bearer token:
+Hosted sites are public; the management API and admin panel are not. They require a session cookie.
 
+**How it works:**
+1. First visit → go to `/setup` to create the admin account
+2. Login at `/login` with username + password → server sets `gitlook_session` cookie (HttpOnly, SameSite=Strict, 30-day expiry)
+3. Include cookie in subsequent requests: `curl -b cookies.txt ...` or let browser handle it automatically
+
+**Cookie format:**
 ```bash
-curl -H "Authorization: Bearer $MINISITE_API_TOKEN" ...
+# Login and save cookies
+curl -c cookies.txt -X POST http://HOST:PORT/login \
+     -d 'username=admin&password=yourpass&next=/admin'
+
+# Use cookies for authenticated requests
+curl -b cookies.txt http://HOST:PORT/api/repos
 ```
 
-Without a valid token the API returns `401` and a JSON body. Token comparison
-is constant-time.
+**Token comparison is constant-time.** Passwords are hashed with Argon2id (PHC format).
 
-The token comes from the operator, not from you. It is set in the server's
-environment as `MINISITE_API_TOKEN` (or `server.api_token` in `config.toml`).
-If you don't have it, ask for it — you cannot create or delete repositories
-without it. You *can* deploy sites without it, because pushing over git is a
-separate path from the HTTP API:
+**Session management:**
+- Session expires after 30 days of inactivity
+- Changing password invalidates all sessions for that user
+- Deleting a user cascades to delete their sessions
 
-```bash
-# git push needs no token — it authenticates by filesystem/SSH access
-git push Gitlook main
-```
+**If you forget your password:**
+- Log in as another admin at `/admin` → use "修改密码" to reset the target user
+- Or delete `gitlook.db` and restart the server → `/setup` will run again
 
-If the server was started with no token at all, `/api/*` is open to anyone who
-can reach the port. That's why the shipped deployment publishes on `127.0.0.1`
-by default.
+**Without a valid session:** `/api/*` returns `401` JSON; `/admin/*` redirects to `/login?next=...`
 
 ## End-to-end: deploy your first site
 
@@ -110,9 +134,7 @@ Invalid examples that return HTTP 400: `../etc`, `..hidden`, `-foo`, `my.site`.
 
 ## Gotchas
 
-- **`/api/*` needs a bearer token.** `POST /api/repos`, `DELETE /api/repos/{name}`
-  and `GET /api/repos` return `401` without `Authorization: Bearer <token>`.
-  Sites and `git push` do not. See [Authentication](#authentication).
+- **`/api/*` and `/admin/*` need a session cookie.** They return `401` (API) or redirect to `/login` (admin) without a valid `gitlook_session` cookie. See [Authentication](#authentication).
 - **First push needs `--force`.** The server creates an empty initial commit when you register a repo; your local history diverges from that, so plain `git push` is rejected. Use `git push --force` once, then normal pushes work.
 - **Only the default branch deploys.** Default is `main` (configurable via `git.default_branch` in `config.toml`). Pushes to other branches are accepted by the bare repo but ignored by the post-receive hook.
 - **No build step.** Whatever is in your repo gets served verbatim. Run your bundler/minifier before committing.
@@ -124,35 +146,37 @@ Invalid examples that return HTTP 400: `../etc`, `..hidden`, `-foo`, `my.site`.
 ## Curl recipes
 
 ```bash
+# First: login and save cookies
+curl -c cookies.txt -s -X POST http://HOST:PORT/login \
+     -d 'username=admin&password=yourpass&next=/admin'
+
 # List repos
-curl -s -H "Authorization: Bearer $MINISITE_API_TOKEN" \
-     http://HOST:PORT/api/repos | jq
+curl -s -b cookies.txt http://HOST:PORT/api/repos | jq
 
 # Create
-curl -s -X POST http://HOST:PORT/api/repos \
-     -H "Authorization: Bearer $MINISITE_API_TOKEN" \
+curl -s -b cookies.txt -X POST http://HOST:PORT/api/repos \
      -H 'Content-Type: application/json' \
      -d '{"name":"blog"}' | jq
 
 # Delete
-curl -s -X DELETE http://HOST:PORT/api/repos/blog \
-     -H "Authorization: Bearer $MINISITE_API_TOKEN" | jq
+curl -s -b cookies.txt -X DELETE http://HOST:PORT/api/repos/blog | jq
 
 # Force deploy
-curl -s -X POST http://HOST:PORT/api/repos/blog/deploy \
-     -H "Authorization: Bearer $MINISITE_API_TOKEN" | jq
+curl -s -b cookies.txt -X POST http://HOST:PORT/api/repos/blog/deploy | jq
 
-# Fetch a file (public — no token)
+# Fetch a file (public — no cookie needed)
 curl -s http://HOST:PORT/blog/index.html
 
-# Browse (directory listing, public — no token)
+# Browse (directory listing, public — no cookie needed)
 curl -s http://HOST:PORT/blog/
 ```
 
-Store the token once per shell to keep the commands short:
+Store the cookies once per shell to keep the commands short:
 
 ```bash
-export MINISITE_API_TOKEN='...'   # ask the operator
+# Login once, then reuse cookies.txt
+curl -c cookies.txt -X POST http://HOST:PORT/login \
+     -d 'username=admin&password=yourpass&next=/admin'
 ```
 
 ## What happens on `git push` (internals)

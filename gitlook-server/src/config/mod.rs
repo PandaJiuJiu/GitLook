@@ -21,9 +21,6 @@ pub struct ServerConfig {
     pub request_timeout_secs: u64,
     /// 供 AI/脚本自述用途的 Markdown 文档，在 GET /howto 返回
     pub howto_file: PathBuf,
-    /// 保护 /api/* 的 Bearer token。为空则完全不鉴权（仅适合只监听回环）。
-    /// 留空时从环境变量 MINISITE_API_TOKEN 读取，这样真值不必进配置文件。
-    pub api_token: Option<String>,
     /// 首页 footer 里的 GitHub 链接
     pub github_url: String,
 }
@@ -35,6 +32,9 @@ pub struct GitConfig {
     pub worktrees_dir: PathBuf,
     pub default_branch: String,
     pub hook_template: PathBuf,
+    /// SQLite 数据库路径（用户表 + session 表）。和 repos_dir/worktrees_dir
+    /// 同级目录是惯例；不写则用 repos_dir 父目录下 gitlook.db。
+    pub db_path: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,6 +44,12 @@ pub struct StaticConfig {
     pub index_template: PathBuf,
     /// 首页（GET /）的模板，列出所有已托管的站点
     pub home_template: PathBuf,
+    /// 首次设置页面（GET /setup）的模板
+    pub setup_template: PathBuf,
+    /// 登录页面（GET /login）的模板
+    pub login_template: PathBuf,
+    /// 管理页面（GET /admin）的模板
+    pub admin_template: PathBuf,
     pub spa_fallback: bool,
     pub cache_max_age: u64,
 }
@@ -75,7 +81,6 @@ impl Default for ServerConfig {
             max_body_size: 100 * 1024 * 1024, // 100MB
             request_timeout_secs: 300,
             howto_file: PathBuf::from("docs/HOWTO.md"),
-            api_token: None,
             github_url: "https://github.com/PandaJiuJiu/GitLook".to_string(),
         }
     }
@@ -84,11 +89,13 @@ impl Default for ServerConfig {
 impl Default for GitConfig {
     fn default() -> Self {
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let worktrees_dir = home.join("gitlook/worktrees");
         Self {
             repos_dir: home.join("gitlook/repos"),
-            worktrees_dir: home.join("gitlook/worktrees"),
+            worktrees_dir: worktrees_dir.clone(),
             default_branch: "main".into(),
             hook_template: PathBuf::from("hooks/post-receive"),
+            db_path: worktrees_dir.parent().unwrap_or(&home).join("gitlook.db"),
         }
     }
 }
@@ -99,6 +106,9 @@ impl Default for StaticConfig {
             auto_index: true,
             index_template: PathBuf::from("templates/dir_index.html.tera"),
             home_template: PathBuf::from("templates/home.html.tera"),
+            setup_template: PathBuf::from("templates/setup.html.tera"),
+            login_template: PathBuf::from("templates/login.html.tera"),
+            admin_template: PathBuf::from("templates/admin.html.tera"),
             spa_fallback: false,
             cache_max_age: 3600,
         }
@@ -151,9 +161,7 @@ impl Config {
                      Run with --init-config to generate one.",
                     path.display()
                 );
-                let mut config = Config::default();
-                config.resolve_api_token();
-                return Ok(config.expand_paths());
+                return Ok(Config::default().expand_paths());
             }
             Err(e) => {
                 return Err(anyhow::anyhow!("Cannot read {}: {}", path.display(), e));
@@ -162,25 +170,11 @@ impl Config {
 
         // 文件存在但解析失败：直接报错。
         // 静默回退到默认配置会让服务用错误的目录启动，比启动失败更难排查。
-        let mut config: Config = toml::from_str(&toml_str).map_err(|e| {
+        let config: Config = toml::from_str(&toml_str).map_err(|e| {
             anyhow::anyhow!("Failed to parse {}: {}", path.display(), e)
         })?;
 
-        config.resolve_api_token();
         Ok(config.expand_paths())
-    }
-
-    /// 配置文件里没写 api_token 时，读环境变量 MINISITE_API_TOKEN。
-    ///
-    /// 走环境变量是为了让真值不必落进配置文件——容器部署时 compose 会把
-    /// 文件挂进镜像，配置文件里写 token 等于把它烤进镜像层。
-    fn resolve_api_token(&mut self) {
-        if self.server.api_token.is_none() {
-            self.server.api_token = std::env::var("MINISITE_API_TOKEN")
-                .ok()
-                .map(|t| t.trim().to_string())
-                .filter(|t| !t.is_empty());
-        }
     }
 
     fn expand_paths(self) -> Self {
@@ -203,11 +197,15 @@ impl Config {
             git: GitConfig {
                 repos_dir: expand(self.git.repos_dir),
                 worktrees_dir: expand(self.git.worktrees_dir),
+                db_path: expand(self.git.db_path),
                 ..self.git
             },
             static_files: StaticConfig {
                 index_template: expand(self.static_files.index_template),
                 home_template: expand(self.static_files.home_template),
+                setup_template: expand(self.static_files.setup_template),
+                login_template: expand(self.static_files.login_template),
+                admin_template: expand(self.static_files.admin_template),
                 ..self.static_files
             },
             logging: LoggingConfig {

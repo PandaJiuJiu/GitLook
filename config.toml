@@ -1,20 +1,29 @@
+# gitlook Configuration
+# Generated at 2026-10-07 04:42:08 UTC
+
 [server]
 host = "0.0.0.0"
 port = 9999
 base_path = ""
 max_body_size = 104857600
 request_timeout_secs = 300
-howto_file = "/home/zac/git/gitlook/docs/HOWTO.md"
+howto_file = "docs/HOWTO.md"
+github_url = "https://github.com/PandaJiuJiu/GitLook"
 
 [git]
-repos_dir = "/home/zac/git/gitlook/tmp/repos"
-worktrees_dir = "/home/zac/git/gitlook/tmp/worktrees"
+repos_dir = "/home/zac/gitlook/repos"
+worktrees_dir = "/home/zac/gitlook/worktrees"
 default_branch = "main"
-hook_template = "/home/zac/git/gitlook/hooks/post-receive"
+hook_template = "hooks/post-receive"
+db_path = "/home/zac/gitlook/gitlook.db"
 
 [static_files]
 auto_index = true
-index_template = "/home/zac/git/gitlook/templates/dir_index.html.tera"
+index_template = "templates/dir_index.html.tera"
+home_template = "templates/home.html.tera"
+setup_template = "templates/setup.html.tera"
+login_template = "templates/login.html.tera"
+admin_template = "templates/admin.html.tera"
 spa_fallback = false
 cache_max_age = 3600
 

@@ -1,12 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# 基础镜像仓库前缀。默认 Docker Hub；若本机访问不通，改用镜像源：
-#   podman build --build-arg REGISTRY=public.ecr.aws/docker/library ...
-# 或在 compose.yaml 同目录放 .env 里设 GITLOOK_REGISTRY=...
-ARG REGISTRY=docker.io/library
-
 # 构建阶段。刻意与运行阶段分离：rust 镜像 ~1.3GB，运行镜像 ~120MB。
-FROM ${REGISTRY}/rust:1-slim-bookworm AS builder
+FROM docker.io/library/rust:1-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -47,7 +42,7 @@ RUN set -e; \
     fi
 
 # 运行阶段
-FROM ${REGISTRY}/debian:bookworm-slim
+FROM docker.io/library/debian:bookworm-slim
 
 # git 是运行期硬依赖：post-receive 钩子靠它把推送内容 checkout 到 worktree。
 RUN apt-get update && apt-get install -y --no-install-recommends \

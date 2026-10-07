@@ -1,8 +1,9 @@
 mod api;
 mod home;
 mod howto;
-mod static_files;
+pub mod static_files;
 
+use crate::auth::{handlers, session::require_session};
 use crate::config::Config;
 use crate::git::GitManager;
 use crate::server::{howto::HowTo, static_files::StaticFileServer};
@@ -26,57 +27,10 @@ pub struct AppState {
     pub git: Arc<GitManager>,
     pub static_files: Arc<StaticFileServer>,
     pub howto: HowTo,
-    /// 保护 /api/* 的 token；None 表示不鉴权
-    pub api_token: Option<Arc<String>>,
+    /// 数据库连接（用户 + session）
+    pub db: Arc<crate::auth::db::Database>,
     /// 首页 footer 里的 GitHub 链接
     pub github_url: String,
-}
-
-/// 校验 `Authorization: Bearer <token>`。
-///
-/// 只挂在 /api/* 上：站点和 /howto 是公开的，鉴权要保护的是能建仓库、
-/// 删仓库的那些接口，不是内容本身。
-///
-/// 用 route_layer 而不是 layer：只有真的匹配到 API 路由的请求才会经过这里，
-/// 未匹配的路径直接透传，静态文件不受影响。
-async fn require_api_token(
-    State(state): State<AppState>,
-    request: axum::extract::Request,
-    next: axum::middleware::Next,
-) -> axum::response::Response {
-    use axum::{http::header, response::IntoResponse};
-
-    let Some(expected) = state.api_token.as_deref() else {
-        return next.run(request).await;
-    };
-
-    let provided = request
-        .headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .map(str::trim);
-
-    // 常量时间比较，避免通过响应时间逐字节猜 token
-    let ok = match provided {
-        Some(t) => {
-            let a = t.as_bytes();
-            let b = expected.as_bytes();
-            a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-        }
-        None => false,
-    };
-
-    if !ok {
-        return (
-            axum::http::StatusCode::UNAUTHORIZED,
-            [(header::CONTENT_TYPE, "application/json")],
-            r#"{"success":false,"error":"missing or invalid Authorization: Bearer <token>","data":null}"#,
-        )
-            .into_response();
-    }
-
-    next.run(request).await
 }
 
 pub async fn run(config: Config) -> Result<()> {
@@ -95,27 +49,27 @@ pub async fn run(config: Config) -> Result<()> {
         config.static_files.auto_index,
         config.static_files.index_template.clone(),
         config.static_files.home_template.clone(),
+        config.static_files.setup_template.clone(),
+        config.static_files.login_template.clone(),
+        config.static_files.admin_template.clone(),
         config.static_files.spa_fallback,
         config.static_files.cache_max_age,
     )?);
+
+    // 打开数据库（用户 + session）
+    let db = Arc::new(crate::auth::db::Database::open(&config.git.db_path).await?);
+    // 启动时清理过期 session
+    if let Err(e) = db.cleanup_expired_sessions().await {
+        tracing::warn!("Failed to cleanup expired sessions: {}", e);
+    }
 
     let state = AppState {
         git: git_manager,
         static_files: static_server,
         howto: HowTo::new(config.server.howto_file.clone()),
-        api_token: config.server.api_token.clone().map(Arc::new),
+        db,
         github_url: config.server.github_url.clone(),
     };
-
-    if state.api_token.is_none() {
-        tracing::warn!(
-            "No API token configured (server.api_token or MINISITE_API_TOKEN). \
-             /api/* is open to anyone who can reach this port — anyone can create \
-             or delete repositories. Set a token before exposing it beyond loopback."
-        );
-    } else {
-        info!("API token loaded; /api/* requires Authorization: Bearer <token>");
-    }
 
     // CORS 配置
     let cors = CorsLayer::new()
@@ -125,12 +79,33 @@ pub async fn run(config: Config) -> Result<()> {
 
     // API 路由单独成一个 Router，才能用 route_layer 只给 API 加鉴权。
     // 直接 layer 到总路由上会把静态文件和 /howto 一起挡住。
+    let state_for_middleware = state.clone();
     let api = Router::new()
         .route("/api/repos", get(api::list_repos))
         .route("/api/repos", post(api::create_repo))
         .route("/api/repos/{name}", delete(api::delete_repo))
         .route("/api/repos/{name}/deploy", post(api::trigger_deploy))
-        .route_layer(axum::middleware::from_fn_with_state(state.clone(), require_api_token));
+        .route_layer(axum::middleware::from_fn(move |request, next| {
+            let state = state_for_middleware.clone();
+            async move { require_session(axum::extract::State(state), request, next).await }
+        }));
+
+    // 认证路由（公开）
+    let auth_public = Router::new()
+        .route("/setup", get(handlers::setup_get).post(handlers::setup_post))
+        .route("/login", get(handlers::login_get).post(handlers::login_post));
+
+    // 认证路由（需要登录）
+    let state_for_middleware2 = state.clone();
+    let auth_protected = Router::new()
+        .route("/logout", post(handlers::logout_post))
+        .route("/admin", get(handlers::admin_get).post(handlers::admin_user_post))
+        .route("/admin/password", post(handlers::admin_password_post))
+        .route("/admin/users/{id}", delete(handlers::admin_user_delete))
+        .route_layer(axum::middleware::from_fn(move |request, next| {
+            let state = state_for_middleware2.clone();
+            async move { require_session(axum::extract::State(state), request, next).await }
+        }));
 
     // 构建路由
     let app = Router::new()
@@ -138,6 +113,11 @@ pub async fn run(config: Config) -> Result<()> {
         .route("/", get(home::home))
         // HowTo 端点（供 AI/脚本使用）
         .route("/howto", get(howto::howto))
+        // 公开认证路由
+        .merge(auth_public)
+        // 受保护认证路由
+        .merge(auth_protected)
+        // API 路由
         .merge(api)
         // 静态文件路由
         .merge(StaticFileServer::router())

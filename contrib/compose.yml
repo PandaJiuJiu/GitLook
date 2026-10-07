@@ -21,10 +21,6 @@ services:
       context: ..
       # 相对 context（仓库根）解析，不是相对本文件
       dockerfile: contrib/Dockerfile
-      args:
-        # 基础镜像仓库前缀。默认 Docker Hub；访问不通时在同目录的 .env 里写
-        # GITLOOK_REGISTRY=public.ecr.aws/docker/library 之类即可，不用改这个文件。
-        REGISTRY: ${GITLOOK_REGISTRY:-docker.io/library}
     image: gitlook:latest
     container_name: gitlook
     restart: unless-stopped
@@ -38,11 +34,8 @@ services:
     # 保护 /api/* 的 Bearer token。真值放在同目录的 .env（已 gitignore），
     # 不写进本文件或 config.docker.toml——那两样都会进 git。
     # 没设置时 /api/* 完全不鉴权，任何能连上的人都能删仓库。
-    environment:
-      - GITLOOK_API_TOKEN=${GITLOOK_API_TOKEN:?not set - put one in contrib/.env, generate with openssl rand -hex 32}
-
     volumes:
-      # 配置与静态资源：直接挂仓库里的源文件，避免副本和漂移。
+      # ��置与静态资源：直接挂仓库里的源文件，避免副本和漂移。
       # 相对路径以本文件所在的 contrib/ 为基准。
       - ./config.docker.toml:/etc/gitlook/config.toml:ro
       - ../templates:/etc/gitlook/templates:ro
@@ -53,6 +46,8 @@ services:
       # 数据目录：容器销毁后仍保留
       - /home/zac/gitlook/repos:/var/lib/gitlook/repos
       - /home/zac/gitlook/worktrees:/var/lib/gitlook/worktrees
+      # SQLite 数据库（用户 + session），和 repos/worktrees 同级
+      - /home/zac/gitlook/gitlook.db:/var/lib/gitlook/gitlook.db
 
 # 复用 podman 自带的 podman 网络，不要让 compose 自动建 contrib_default。
 # 原因：这台机器上 docker 是 podman 3.4.4，compose v1 建出来的网络带 CNI

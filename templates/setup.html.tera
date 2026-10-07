@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gitlook — 首次设置</title>
+<style>
+:root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --text: #1a1d21;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #eff4ff;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0e1116;
+        --card: #171a21;
+        --text: #e6e8ec;
+        --muted: #9aa3b2;
+        --border: #262b34;
+        --accent: #6ea8fe;
+        --accent-soft: #16233b;
+        --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+    }
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 3rem 1.5rem 4rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 420px; margin: 0 auto; }
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+}
+.logo {
+    display: inline-flex; align-items: center; gap: .55rem;
+    font-size: 1.5rem; font-weight: 650; letter-spacing: -.02em;
+}
+.logo .dot {
+    width: .6rem; height: .6rem; border-radius: 50%;
+    background: var(--accent);
+}
+h1 { margin: 1.5rem 0 0; font-size: 1.25rem; }
+.desc { color: var(--muted); margin: .5rem 0 1.5rem; }
+
+label { display: block; margin-bottom: .35rem; font-size: .9rem; }
+.input {
+    width: 100%;
+    padding: .6rem .8rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+}
+.input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-color: var(--accent);
+}
+.btn {
+    width: 100%;
+    margin-top: 1rem;
+    padding: .7rem 1rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn:hover { filter: brightness(1.05); }
+.error { color: #dc2626; font-size: .85rem; margin-top: .5rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<div class="logo"><span class="dot"></span> Gitlook</div>
+<h1>首次设置</h1>
+<p class="desc">检测到暂无管理员账号，请创建第一个管理员。</p>
+<form method="post">
+<label>用户名</label>
+<input class="input" name="username" autocomplete="username" required>
+<label>密码</label>
+<input type="password" class="input" name="password" autocomplete="new-password" required minlength="8">
+<label>确认密码</label>
+<input type="password" class="input" name="confirm" autocomplete="new-password" required minlength="8">
+<!-- FORM_ERROR -->
+<button class="btn" type="submit">创建并登录</button>
+</form>
+</div>
+</div>
+</body>
+</html>

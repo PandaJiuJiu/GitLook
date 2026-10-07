@@ -345,11 +345,6 @@ impl GitManager {
             .replace("{{DEFAULT_BRANCH}}", &self.default_branch)
     }
 
-    async fn ensure_initial_commit(&self, _bare_path: &Path, _worktree_path: &Path) -> Result<()> {
-        // 此函数已被废弃 - 初始提交在 create_repo 中直接处理
-        Ok(())
-    }
-
     fn validate_name(name: &str) -> Result<()> {
         if name.is_empty() || name.len() > 100 {
             return Err(GitError::InvalidName("Name must be 1-100 characters".into()).into());

@@ -10,7 +10,7 @@ use crate::server::{howto::HowTo, static_files::StaticFileServer};
 use anyhow::Result;
 use axum::{
     Router,
-    extract::{DefaultBodyLimit, State},
+    extract::DefaultBodyLimit,
     http::Method,
     routing::{get, post, delete},
 };
@@ -45,7 +45,6 @@ pub async fn run(config: Config) -> Result<()> {
     // 初始化静态文件服务器
     let static_server = Arc::new(StaticFileServer::new(
         config.git.worktrees_dir.clone(),
-        config.base_path().to_string(),
         config.static_files.auto_index,
         config.static_files.index_template.clone(),
         config.static_files.home_template.clone(),

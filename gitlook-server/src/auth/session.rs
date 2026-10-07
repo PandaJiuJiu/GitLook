@@ -115,8 +115,6 @@ pub async fn require_session(
     mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Response {
-    use axum::http::{header, StatusCode, Uri};
-
     let Some(token) = extract_session_token(request.headers()) else {
         return unauthorized_response(request.uri().path()).await;
     };

@@ -20,7 +20,6 @@ use crate::server::AppState;
 #[derive(Clone)]
 pub struct StaticFileServer {
     worktrees_dir: PathBuf,
-    base_path: String,
     auto_index: bool,
     spa_fallback: bool,
     cache_max_age: u64,
@@ -30,7 +29,6 @@ pub struct StaticFileServer {
 impl StaticFileServer {
     pub fn new(
         worktrees_dir: PathBuf,
-        base_path: String,
         auto_index: bool,
         index_template: PathBuf,
         home_template: PathBuf,
@@ -71,7 +69,6 @@ impl StaticFileServer {
 
         Ok(Self {
             worktrees_dir,
-            base_path,
             auto_index,
             spa_fallback,
             cache_max_age,
@@ -388,12 +385,11 @@ fn set_cache_headers(resp: &mut Response, max_age: u64) {
 }
 
 fn not_found_response(msg: &str) -> Response {
-    let mut resp = Response::builder()
+    Response::builder()
         .status(StatusCode::NOT_FOUND)
         .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
         .body(Body::from(msg.to_string()))
-        .unwrap();
-    resp
+        .unwrap()
 }
 
 const BUILTIN_INDEX_TEMPLATE: &str = r#"
